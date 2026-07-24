@@ -1,0 +1,167 @@
+using System.Globalization;
+using System.Net.Http.Headers;
+using AccountService.Application.Abstractions;
+using AccountService.Application.Profiles.CreateProfile;
+using AccountService.IntegrationTests.Fakes;
+using AccountService.Infrastructure.Persistence;
+using Common.Contracts.Users;
+using Common.Domain.Results;
+using MassTransit;
+using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.IdentityModel.Tokens;
+using Testcontainers.MySql;
+using Testcontainers.RabbitMq;
+using Xunit;
+
+namespace AccountService.IntegrationTests;
+
+public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+{
+    private readonly MySqlContainer _mySql = new MySqlBuilder("mysql:8.4")
+        .WithDatabase("peaker_accounts")
+        .WithUsername("peaker")
+        .WithPassword("peaker")
+        .Build();
+
+    private readonly RabbitMqContainer _rabbitMq = new RabbitMqBuilder("rabbitmq:3-management-alpine").Build();
+
+    private readonly TestTokenSigning _tokenSigning = new();
+
+    internal FakeImageStorage ImageStorage { get; } = new();
+
+    public HttpClient CreateAuthenticatedClient(Guid userId)
+    {
+        HttpClient client = CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _tokenSigning.CreateAccessToken(userId));
+
+        return client;
+    }
+
+    public async Task SeedProfileAsync(Guid userId, string username)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+
+        Result result = await sender.Send(new CreateProfileCommand(userId, username));
+        if (result.IsFailure)
+        {
+            throw new InvalidOperationException($"No se pudo sembrar el perfil: {result.Error.Code}.");
+        }
+    }
+
+    public async Task PublishUserRegisteredAsync(UserRegistered message)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        IPublishEndpoint publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
+
+        await publishEndpoint.Publish(message);
+    }
+
+    public async Task<int> CountProfilesAsync(Guid userId)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        return await context.Profiles.CountAsync(profile => profile.UserId == userId);
+    }
+
+    public async Task<bool> WaitForProfileAsync(Guid userId)
+    {
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            if (await CountProfilesAsync(userId) > 0)
+            {
+                return true;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        return false;
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(BuildSettings()));
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IImageStorage>();
+            services.AddSingleton<IImageStorage>(ImageStorage);
+
+            services.Configure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme, ConfigureTestJwtBearer);
+        });
+    }
+
+    private void ConfigureTestJwtBearer(JwtBearerOptions options)
+    {
+        options.Authority = null;
+        options.RequireHttpsMetadata = false;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = TestTokenSigning.Issuer,
+            ValidateAudience = true,
+            ValidAudience = TestTokenSigning.Audience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = _tokenSigning.PublicKey,
+            NameClaimType = "sub",
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    }
+
+    private Dictionary<string, string?> BuildSettings()
+    {
+        var rabbitUri = new Uri(_rabbitMq.GetConnectionString());
+        string[] credentials = rabbitUri.UserInfo.Split(':');
+
+        return new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:AccountDatabase"] = _mySql.GetConnectionString(),
+            ["Messaging:Host"] = rabbitUri.Host,
+            ["Messaging:Port"] = rabbitUri.Port.ToString(CultureInfo.InvariantCulture),
+            ["Messaging:Username"] = credentials[0],
+            ["Messaging:Password"] = credentials[1],
+            ["Messaging:VirtualHost"] = "/",
+            ["Outbox:PollingInterval"] = "00:00:01",
+            ["Jwt:Issuer"] = TestTokenSigning.Issuer,
+            ["Jwt:Audience"] = TestTokenSigning.Audience,
+            ["Cloudinary:CloudName"] = "test",
+            ["Cloudinary:ApiKey"] = "test",
+            ["Cloudinary:ApiSecret"] = "test"
+        };
+    }
+
+    async Task IAsyncLifetime.InitializeAsync()
+    {
+        await _mySql.StartAsync();
+        await _rabbitMq.StartAsync();
+
+        using IServiceScope scope = Services.CreateScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+        await context.Database.MigrateAsync();
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        _tokenSigning.Dispose();
+        await _mySql.DisposeAsync();
+        await _rabbitMq.DisposeAsync();
+        await base.DisposeAsync();
+    }
+}
