@@ -1,3 +1,5 @@
+using AccountService.Application.Profiles.GetMyStats;
+
 namespace AccountService.Application.Profiles.GetPublicProfile;
 
 public sealed record PublicProfileResponse(
@@ -8,11 +10,3 @@ public sealed record PublicProfileResponse(
     string? AvatarUrl,
     string? CountryCode,
     ProfileStatsResponse Stats);
-
-public sealed record ProfileStatsResponse(
-    int TotalAscents,
-    int DistinctPeaks,
-    int HighestAltitudeMeters,
-    Guid? HighestPeakId,
-    string? HighestPeakName,
-    DateOnly? LastAscentDate);

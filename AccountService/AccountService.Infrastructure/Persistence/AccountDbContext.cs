@@ -1,4 +1,6 @@
+using AccountService.Domain.ProfileAscents;
 using AccountService.Domain.Profiles;
+using AccountService.Infrastructure.Persistence.Converters;
 using Common.Application.Abstractions;
 using Common.Infrastructure.Persistence.Idempotency;
 using Common.Infrastructure.Persistence.Outbox;
@@ -10,6 +12,8 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
 {
     public DbSet<Profile> Profiles => Set<Profile>();
 
+    public DbSet<ProfileAscent> ProfileAscents => Set<ProfileAscent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AccountDbContext).Assembly);
@@ -17,6 +21,15 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
         modelBuilder.ApplyConfiguration(new ProcessedMessageConfiguration());
     }
 
-    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
         configurationBuilder.Properties<Guid>().HaveColumnType("char(36)");
+
+        // Motivo: MySql.EntityFrameworkCore no materializa DateOnly desde una columna date.
+        configurationBuilder.Properties<DateOnly>()
+            .HaveConversion<DateOnlyConverter>().HaveColumnType("date");
+
+        configurationBuilder.Properties<DateOnly?>()
+            .HaveConversion<NullableDateOnlyConverter>().HaveColumnType("date");
+    }
 }

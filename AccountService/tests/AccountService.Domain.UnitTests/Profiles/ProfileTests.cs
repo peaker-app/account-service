@@ -15,8 +15,27 @@ public sealed class ProfileTests
         Profile profile = ProfileMother.Create();
 
         profile.Visibility.Should().Be(ProfileVisibility.Public);
-        profile.Stats.TotalAscents.Should().Be(0);
-        profile.Stats.DistinctPeaks.Should().Be(0);
+        profile.Stats.Overall.Should().Be(ProfileStatsSnapshot.Empty);
+        profile.Stats.Public.Should().Be(ProfileStatsSnapshot.Empty);
+    }
+
+    [Fact]
+    public void RefreshStats_WithNewValues_ReplacesBothBlocksAndStampsTheUpdate()
+    {
+        Profile profile = ProfileMother.Create();
+        ProfileStatsUpdate update = new(
+            new ProfileStatsSnapshot(3, 2, 4808, Guid.CreateVersion7(), "Mont Blanc", new DateOnly(2026, 2, 9)),
+            new ProfileStatsSnapshot(1, 1, 3404, Guid.CreateVersion7(), "Aneto", new DateOnly(2025, 8, 20)));
+        DateTime updatedAtUtc = ProfileMother.Now.AddDays(1);
+
+        profile.RefreshStats(update, updatedAtUtc);
+
+        profile.Stats.Should().BeEquivalentTo(new
+        {
+            update.Overall,
+            update.Public,
+            UpdatedAtUtc = updatedAtUtc
+        });
     }
 
     [Fact]

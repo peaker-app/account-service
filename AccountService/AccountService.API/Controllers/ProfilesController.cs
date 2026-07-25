@@ -1,6 +1,7 @@
 using AccountService.API.Requests;
 using AccountService.Application.Abstractions;
 using AccountService.Application.Profiles.GetMyProfile;
+using AccountService.Application.Profiles.GetMyStats;
 using AccountService.Application.Profiles.GetPublicProfile;
 using AccountService.Application.Profiles.RemoveAvatar;
 using AccountService.Application.Profiles.UploadAvatar;
@@ -27,6 +28,19 @@ public sealed class ProfilesController(ISender sender, IUserContext userContext)
     {
         Result<ProfileResponse> result = await sender.Send(
             new GetMyProfileQuery(userContext.UserId), cancellationToken);
+
+        return result.ToActionResult();
+    }
+
+    [HttpGet("me/stats")]
+    [Authorize]
+    [ProducesResponseType(typeof(ProfileStatsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyStats(CancellationToken cancellationToken)
+    {
+        Result<ProfileStatsResponse> result = await sender.Send(
+            new GetMyStatsQuery(userContext.UserId), cancellationToken);
 
         return result.ToActionResult();
     }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using AccountService.Application.Profiles.GetPublicProfile;
+using AccountService.IntegrationTests.TestData;
 using FluentAssertions;
 using Xunit;
 
@@ -23,6 +24,32 @@ public sealed class PublicProfileEndpointsTests(AccountServiceApiFactory factory
 
         profile!.UserId.Should().Be(userId);
         profile.Stats.TotalAscents.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetPublicProfile_WithPrivateAscents_ExcludesThemFromTheStats()
+    {
+        Guid userId = ApiTestHelpers.NewUserId();
+        await _factory.SeedProfileAsync(userId, ApiTestHelpers.UniqueUsername());
+        Guid anetoId = Guid.CreateVersion7();
+
+        await _factory.PublishAsync(AscentEvents.Registered(userId, Guid.CreateVersion7(), anetoId, 3404));
+        await _factory.PublishAsync(AscentEvents.Registered(
+            userId, Guid.CreateVersion7(), Guid.CreateVersion7(), 4808, AscentEvents.Private, "Mont Blanc"));
+        await _factory.WaitForStatsAsync(userId, stats => stats.Overall.TotalAscents == 2);
+
+        using HttpClient anonymous = _factory.CreateClient();
+        PublicProfileResponse? profile = await anonymous.GetFromJsonAsync<PublicProfileResponse>(
+            $"/api/profiles/{userId}");
+
+        profile!.Stats.Should().BeEquivalentTo(new
+        {
+            TotalAscents = 1,
+            DistinctPeaks = 1,
+            HighestAltitudeMeters = 3404,
+            HighestPeakId = anetoId,
+            HighestPeakName = "Aneto"
+        });
     }
 
     [Fact]

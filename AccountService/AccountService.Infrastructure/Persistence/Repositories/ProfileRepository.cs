@@ -6,6 +6,9 @@ namespace AccountService.Infrastructure.Persistence.Repositories;
 
 internal sealed class ProfileRepository(AccountDbContext context) : IProfileRepository
 {
+    public Task<Profile?> GetByIdAsync(Guid profileId, CancellationToken cancellationToken) =>
+        context.Profiles.FirstOrDefaultAsync(profile => profile.Id == profileId, cancellationToken);
+
     public Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken) =>
         context.Profiles.FirstOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
 

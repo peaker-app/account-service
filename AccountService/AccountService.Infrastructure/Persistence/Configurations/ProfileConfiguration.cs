@@ -1,3 +1,4 @@
+using AccountService.Domain.ProfileAscents;
 using AccountService.Domain.Profiles;
 using Common.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -67,15 +68,43 @@ internal sealed class ProfileConfiguration : EntityConfiguration<Profile>
             stats.Property<Guid>("profile_id").HasColumnName("profile_id");
             stats.HasKey("profile_id");
 
-            stats.Property(value => value.TotalAscents).HasColumnName("total_ascents").IsRequired();
-            stats.Property(value => value.DistinctPeaks).HasColumnName("distinct_peaks").IsRequired();
-            stats.Property(value => value.HighestAltitudeMeters).HasColumnName("highest_altitude_m").IsRequired();
-            stats.Property(value => value.HighestPeakId).HasColumnName("highest_peak_id");
-            stats.Property(value => value.HighestPeakName).HasColumnName("highest_peak_name").HasMaxLength(200);
-            stats.Property(value => value.LastAscentDate).HasColumnName("last_ascent_date");
-            stats.Property(value => value.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
+            // Motivo: dos eventos de ascensión del mismo perfil se consumen en paralelo y ambos
+            // recalculan desde el mismo estado; el token hace fallar al segundo para que reintente.
+            stats.Property(value => value.UpdatedAtUtc)
+                .HasColumnName("updated_at_utc")
+                .IsRequired()
+                .IsConcurrencyToken();
+
+            stats.Ignore(value => value.Overall);
+            stats.Ignore(value => value.Public);
+
+            ConfigureOverallStats(stats);
+            ConfigurePublicStats(stats);
         });
 
         builder.Navigation(profile => profile.Stats).IsRequired();
+    }
+
+    private static void ConfigureOverallStats(OwnedNavigationBuilder<Profile, ProfileStats> stats)
+    {
+        stats.Property(value => value.TotalAscents).HasColumnName("total_ascents").IsRequired();
+        stats.Property(value => value.DistinctPeaks).HasColumnName("distinct_peaks").IsRequired();
+        stats.Property(value => value.HighestAltitudeMeters).HasColumnName("highest_altitude_m").IsRequired();
+        stats.Property(value => value.HighestPeakId).HasColumnName("highest_peak_id");
+        stats.Property(value => value.HighestPeakName)
+            .HasColumnName("highest_peak_name").HasMaxLength(PeakSnapshot.MaxNameLength);
+        stats.Property(value => value.LastAscentDate).HasColumnName("last_ascent_date");
+    }
+
+    private static void ConfigurePublicStats(OwnedNavigationBuilder<Profile, ProfileStats> stats)
+    {
+        stats.Property(value => value.PublicTotalAscents).HasColumnName("public_total_ascents").IsRequired();
+        stats.Property(value => value.PublicDistinctPeaks).HasColumnName("public_distinct_peaks").IsRequired();
+        stats.Property(value => value.PublicHighestAltitudeMeters)
+            .HasColumnName("public_highest_altitude_m").IsRequired();
+        stats.Property(value => value.PublicHighestPeakId).HasColumnName("public_highest_peak_id");
+        stats.Property(value => value.PublicHighestPeakName)
+            .HasColumnName("public_highest_peak_name").HasMaxLength(PeakSnapshot.MaxNameLength);
+        stats.Property(value => value.PublicLastAscentDate).HasColumnName("public_last_ascent_date");
     }
 }

@@ -66,6 +66,8 @@ public sealed class Profile : AggregateRoot
         RaiseUpdated();
     }
 
+    public void RefreshStats(ProfileStatsUpdate update, DateTime utcNow) => Stats.Apply(update, utcNow);
+
     public void SetAvatar(Avatar avatar)
     {
         RaisePreviousAvatarReplacement();

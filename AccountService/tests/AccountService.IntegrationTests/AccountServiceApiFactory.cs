@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using AccountService.Application.Abstractions;
 using AccountService.Application.Profiles.CreateProfile;
+using AccountService.Domain.Profiles;
 using AccountService.IntegrationTests.Fakes;
 using AccountService.Infrastructure.Persistence;
 using Common.Contracts.Users;
@@ -72,6 +73,52 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
         IPublishEndpoint publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
 
         await publishEndpoint.Publish(message);
+    }
+
+    public async Task PublishAsync<TMessage>(TMessage message)
+        where TMessage : class
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        IPublishEndpoint publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
+
+        await publishEndpoint.Publish(message);
+    }
+
+    public async Task<ProfileStats?> WaitForStatsAsync(Guid userId, Func<ProfileStats, bool> predicate)
+    {
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            ProfileStats? stats = await ReadStatsAsync(userId);
+
+            if (stats is not null && predicate(stats))
+            {
+                return stats;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        return await ReadStatsAsync(userId);
+    }
+
+    public async Task<int> CountProjectedAscentsAsync(Guid ascentId)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        return await context.ProfileAscents.CountAsync(ascent => ascent.AscentId == ascentId);
+    }
+
+    private async Task<ProfileStats?> ReadStatsAsync(Guid userId)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        Profile? profile = await context.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(profile => profile.UserId == userId);
+
+        return profile?.Stats;
     }
 
     public async Task<bool> WaitForProfileRemovalAsync(Guid userId)

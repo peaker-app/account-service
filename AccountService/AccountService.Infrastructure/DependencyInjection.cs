@@ -1,4 +1,5 @@
 using AccountService.Application.Abstractions;
+using AccountService.Domain.ProfileAscents;
 using AccountService.Domain.Profiles;
 using AccountService.Domain.Profiles.Events;
 using AccountService.Infrastructure.ExternalServices;
@@ -28,6 +29,10 @@ public static class DependencyInjection
         {
             bus.AddConsumer<UserRegisteredConsumer>();
             bus.AddConsumer<UserDeletedConsumer>();
+            bus.AddConsumer<AscentRegisteredConsumer>();
+            bus.AddConsumer<AscentUpdatedConsumer>();
+            bus.AddConsumer<AscentDeletedConsumer>();
+            bus.AddConsumer<PeakRenamedConsumer>();
         });
 
         return services;
@@ -66,6 +71,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AccountDbContext>());
         services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IProfileAscentRepository, ProfileAscentRepository>();
         services.AddScoped<IDomainEventHandler<ProfileUpdatedDomainEvent>, ProfileUpdatedDomainEventHandler>();
         services.AddScoped<IDomainEventHandler<ProfileAvatarReplacedDomainEvent>, ProfileAvatarReplacedDomainEventHandler>();
     }

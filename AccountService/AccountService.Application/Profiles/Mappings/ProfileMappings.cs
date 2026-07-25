@@ -1,4 +1,5 @@
 using AccountService.Application.Profiles.GetMyProfile;
+using AccountService.Application.Profiles.GetMyStats;
 using AccountService.Application.Profiles.GetPublicProfile;
 using AccountService.Domain.Profiles;
 
@@ -23,9 +24,9 @@ internal static class ProfileMappings
         profile.Bio,
         profile.Avatar?.SecureUrl,
         profile.CountryCode?.Value,
-        profile.Stats.ToResponse());
+        profile.Stats.Public.ToResponse());
 
-    private static ProfileStatsResponse ToResponse(this ProfileStats stats) => new(
+    public static ProfileStatsResponse ToResponse(this ProfileStatsSnapshot stats) => new(
         stats.TotalAscents,
         stats.DistinctPeaks,
         stats.HighestAltitudeMeters,
