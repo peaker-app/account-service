@@ -11,4 +11,6 @@ public interface IProfileRepository
     Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken);
 
     void Add(Profile profile);
+
+    void Remove(Profile profile);
 }

@@ -66,6 +66,29 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
         await publishEndpoint.Publish(message);
     }
 
+    public async Task PublishUserDeletedAsync(UserDeleted message)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        IPublishEndpoint publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
+
+        await publishEndpoint.Publish(message);
+    }
+
+    public async Task<bool> WaitForProfileRemovalAsync(Guid userId)
+    {
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            if (await CountProfilesAsync(userId) == 0)
+            {
+                return true;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        return false;
+    }
+
     public async Task<int> CountProfilesAsync(Guid userId)
     {
         await using AsyncServiceScope scope = Services.CreateAsyncScope();

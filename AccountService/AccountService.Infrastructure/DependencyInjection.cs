@@ -24,7 +24,11 @@ public static class DependencyInjection
     {
         services.AddPersistence(configuration);
         services.AddImageStorage(configuration);
-        services.AddEventBus(configuration, bus => bus.AddConsumer<UserRegisteredConsumer>());
+        services.AddEventBus(configuration, bus =>
+        {
+            bus.AddConsumer<UserRegisteredConsumer>();
+            bus.AddConsumer<UserDeletedConsumer>();
+        });
 
         return services;
     }

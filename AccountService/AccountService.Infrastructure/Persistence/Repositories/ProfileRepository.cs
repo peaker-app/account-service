@@ -31,4 +31,6 @@ internal sealed class ProfileRepository(AccountDbContext context) : IProfileRepo
     }
 
     public void Add(Profile profile) => context.Profiles.Add(profile);
+
+    public void Remove(Profile profile) => context.Profiles.Remove(profile);
 }
