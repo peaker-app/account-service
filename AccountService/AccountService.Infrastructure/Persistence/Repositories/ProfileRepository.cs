@@ -21,6 +21,12 @@ internal sealed class ProfileRepository(AccountDbContext context) : IProfileRepo
             : context.Profiles.FirstOrDefaultAsync(profile => profile.Slug == parsed.Value, cancellationToken);
     }
 
+    public async Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken cancellationToken) =>
+        await context.Profiles
+            .Where(profile => profile.UserId == userId)
+            .Select(profile => (Guid?)profile.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<bool> ExistsByUserIdAsync(Guid userId, CancellationToken cancellationToken) =>
         context.Profiles.AnyAsync(profile => profile.UserId == userId, cancellationToken);
 

@@ -1,7 +1,9 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Net.Http.Headers;
 using AccountService.Application.Abstractions;
 using AccountService.Application.Profiles.CreateProfile;
+using AccountService.Domain.Collections;
 using AccountService.Domain.Profiles;
 using AccountService.IntegrationTests.Fakes;
 using AccountService.Infrastructure.Persistence;
@@ -37,6 +39,8 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
     private readonly TestTokenSigning _tokenSigning = new();
 
     internal FakeImageStorage ImageStorage { get; } = new();
+
+    internal FakePeakCatalog PeakCatalog { get; } = new();
 
     public HttpClient CreateAuthenticatedClient(Guid userId)
     {
@@ -144,6 +148,57 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
         return await context.Profiles.CountAsync(profile => profile.UserId == userId);
     }
 
+    public async Task<int> CountDefaultCollectionsAsync(Guid userId)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        return await context.Collections.CountAsync(collection =>
+            collection.Kind == CollectionKind.WantToClimb
+            && context.Profiles.Any(profile => profile.Id == collection.ProfileId && profile.UserId == userId));
+    }
+
+    public async Task<Exception?> TryInsertDefaultCollectionAsync(Guid userId, string name)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        Guid profileId = await context.Profiles
+            .Where(profile => profile.UserId == userId)
+            .Select(profile => profile.Id)
+            .FirstAsync();
+
+        try
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                 INSERT INTO collections (id, profile_id, kind, name, created_at_utc, updated_at_utc)
+                 VALUES ({Guid.CreateVersion7()}, {profileId}, 'WantToClimb', {name}, NOW(6), NOW(6))
+                 """);
+
+            return null;
+        }
+        catch (DbException exception)
+        {
+            return exception;
+        }
+    }
+
+    public async Task<bool> WaitForDefaultCollectionAsync(Guid userId)
+    {
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            if (await CountDefaultCollectionsAsync(userId) > 0)
+            {
+                return true;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        return false;
+    }
+
     public async Task<bool> WaitForProfileAsync(Guid userId)
     {
         for (int attempt = 0; attempt < 20; attempt++)
@@ -170,6 +225,9 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
         {
             services.RemoveAll<IImageStorage>();
             services.AddSingleton<IImageStorage>(ImageStorage);
+
+            services.RemoveAll<IPeakCatalog>();
+            services.AddSingleton<IPeakCatalog>(PeakCatalog);
 
             services.Configure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme, ConfigureTestJwtBearer);

@@ -24,4 +24,7 @@ internal sealed class FakeImageStorage : IImageStorage
 
         return Task.CompletedTask;
     }
+
+    public Task TryDeleteAsync(string publicId, CancellationToken cancellationToken) =>
+        DeleteAsync(publicId, cancellationToken);
 }

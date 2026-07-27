@@ -46,8 +46,24 @@ internal sealed class CloudinaryImageStorage : IImageStorage
 
     public async Task DeleteAsync(string publicId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var deletionParameters = new DeletionParams(publicId);
 
         await _cloudinary.DestroyAsync(deletionParameters);
+    }
+
+    public async Task TryDeleteAsync(string publicId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await DeleteAsync(publicId, cancellationToken);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            // Motivo: compensar una subida que no llegó a persistirse es best-effort. Si Cloudinary
+            // no responde no puede convertirse el error del caso de uso en un 500.
+            _logger.LogError(exception, "Orphaned Cloudinary avatar {PublicId} could not be removed", publicId);
+        }
     }
 }

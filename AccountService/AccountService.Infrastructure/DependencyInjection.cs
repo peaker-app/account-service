@@ -1,4 +1,5 @@
 using AccountService.Application.Abstractions;
+using AccountService.Domain.Collections;
 using AccountService.Domain.ProfileAscents;
 using AccountService.Domain.Profiles;
 using AccountService.Domain.Profiles.Events;
@@ -16,6 +17,7 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace AccountService.Infrastructure;
 
@@ -25,6 +27,7 @@ public static class DependencyInjection
     {
         services.AddPersistence(configuration);
         services.AddImageStorage(configuration);
+        services.AddPeakCatalog(configuration);
         services.AddEventBus(configuration, bus =>
         {
             bus.AddConsumer<UserRegisteredConsumer>();
@@ -72,6 +75,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AccountDbContext>());
         services.AddScoped<IProfileRepository, ProfileRepository>();
         services.AddScoped<IProfileAscentRepository, ProfileAscentRepository>();
+        services.AddScoped<ICollectionRepository, CollectionRepository>();
+        services.AddScoped<ICollectionReader, CollectionReader>();
         services.AddScoped<IDomainEventHandler<ProfileUpdatedDomainEvent>, ProfileUpdatedDomainEventHandler>();
         services.AddScoped<IDomainEventHandler<ProfileAvatarReplacedDomainEvent>, ProfileAvatarReplacedDomainEventHandler>();
     }
@@ -80,5 +85,24 @@ public static class DependencyInjection
     {
         services.Configure<CloudinaryOptions>(configuration.GetSection(CloudinaryOptions.SectionName));
         services.AddScoped<IImageStorage, CloudinaryImageStorage>();
+    }
+
+    private static void AddPeakCatalog(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<PeakCatalogOptions>()
+            .Bind(configuration.GetSection(PeakCatalogOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient<IPeakCatalog, PeakCatalogHttpClient>(ConfigurePeakCatalog)
+            .AddStandardResilienceHandler();
+    }
+
+    private static void ConfigurePeakCatalog(IServiceProvider provider, HttpClient client)
+    {
+        PeakCatalogOptions options = provider.GetRequiredService<IOptions<PeakCatalogOptions>>().Value;
+
+        client.BaseAddress = options.BaseAddress;
+        client.Timeout = options.RequestTimeout;
     }
 }

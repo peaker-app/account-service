@@ -1,3 +1,4 @@
+using AccountService.Domain.Collections;
 using AccountService.Domain.ProfileAscents;
 using AccountService.Domain.Profiles;
 using AccountService.Infrastructure.Persistence.Converters;
@@ -13,6 +14,8 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
     public DbSet<Profile> Profiles => Set<Profile>();
 
     public DbSet<ProfileAscent> ProfileAscents => Set<ProfileAscent>();
+
+    public DbSet<Collection> Collections => Set<Collection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

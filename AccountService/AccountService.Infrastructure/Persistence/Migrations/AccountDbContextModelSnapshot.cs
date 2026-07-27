@@ -19,6 +19,51 @@ namespace AccountService.Infrastructure.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("AccountService.Domain.Collections.Collection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)")
+                        .HasColumnName("name")
+                        .UseCollation("utf8mb4_0900_ai_ci");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("profile_id");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_collections_profile_name");
+
+                    b.ToTable("collections", (string)null);
+                });
+
             modelBuilder.Entity("AccountService.Domain.ProfileAscents.ProfileAscent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -172,6 +217,60 @@ namespace AccountService.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_outbox_messages_processed_at_utc");
 
                     b.ToTable("outbox_messages", (string)null);
+                });
+
+            modelBuilder.Entity("AccountService.Domain.Collections.Collection", b =>
+                {
+                    b.HasOne("AccountService.Domain.Profiles.Profile", null)
+                        .WithMany()
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("AccountService.Domain.Collections.CollectionPeak", "Peaks", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("char(36)")
+                                .HasColumnName("id");
+
+                            b1.Property<DateTime>("AddedAtUtc")
+                                .HasColumnType("datetime(6)")
+                                .HasColumnName("added_at_utc");
+
+                            b1.Property<int>("PeakAltitudeMeters")
+                                .HasColumnType("int")
+                                .HasColumnName("peak_altitude_m");
+
+                            b1.Property<Guid>("PeakId")
+                                .HasColumnType("char(36)")
+                                .HasColumnName("peak_id");
+
+                            b1.Property<string>("PeakName")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("varchar(200)")
+                                .HasColumnName("peak_name");
+
+                            b1.Property<Guid>("collection_id")
+                                .HasColumnType("char(36)")
+                                .HasColumnName("collection_id");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("PeakId")
+                                .HasDatabaseName("ix_collection_peaks_peak");
+
+                            b1.HasIndex("collection_id", "PeakId")
+                                .IsUnique()
+                                .HasDatabaseName("ux_collection_peaks_unique");
+
+                            b1.ToTable("collection_peaks", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("collection_id");
+                        });
+
+                    b.Navigation("Peaks");
                 });
 
             modelBuilder.Entity("AccountService.Domain.ProfileAscents.ProfileAscent", b =>

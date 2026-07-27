@@ -1,5 +1,6 @@
 using AccountService.Application.Profiles.CreateProfile;
 using AccountService.Application.UnitTests.TestData;
+using AccountService.Domain.Collections;
 using AccountService.Domain.Profiles;
 using Common.Application.Abstractions;
 using Common.Domain.Results;
@@ -14,6 +15,7 @@ public sealed class CreateProfileCommandHandlerTests
     private static readonly CreateProfileCommand Command = new(Guid.CreateVersion7(), "Hiker_Ruben");
 
     private readonly IProfileRepository _profileRepository = Substitute.For<IProfileRepository>();
+    private readonly ICollectionRepository _collectionRepository = Substitute.For<ICollectionRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IDateTimeProvider _dateTimeProvider = Substitute.For<IDateTimeProvider>();
     private readonly CreateProfileCommandHandler _handler;
@@ -21,7 +23,8 @@ public sealed class CreateProfileCommandHandlerTests
     public CreateProfileCommandHandlerTests()
     {
         _dateTimeProvider.UtcNow.Returns(ProfileFactory.Now);
-        _handler = new CreateProfileCommandHandler(_profileRepository, _unitOfWork, _dateTimeProvider);
+        _handler = new CreateProfileCommandHandler(
+            _profileRepository, _collectionRepository, _unitOfWork, _dateTimeProvider);
     }
 
     [Fact]
@@ -41,6 +44,28 @@ public sealed class CreateProfileCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithNewUser_CreatesTheDefaultCollectionInTheSameTransaction()
+    {
+        _profileRepository.ExistsByUserIdAsync(Command.UserId, Arg.Any<CancellationToken>()).Returns(false);
+        _profileRepository.ExistsBySlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        Profile? profile = null;
+        Collection? collection = null;
+        _profileRepository.When(repository => repository.Add(Arg.Any<Profile>()))
+            .Do(call => profile = call.Arg<Profile>());
+        _collectionRepository.When(repository => repository.Add(Arg.Any<Collection>()))
+            .Do(call => collection = call.Arg<Collection>());
+
+        await _handler.Handle(Command, CancellationToken.None);
+
+        collection.Should().BeEquivalentTo(new
+        {
+            ProfileId = profile!.Id,
+            Kind = CollectionKind.WantToClimb
+        });
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_WhenProfileAlreadyExists_IsIdempotentAndDoesNotCreateAnother()
     {
         _profileRepository.ExistsByUserIdAsync(Command.UserId, Arg.Any<CancellationToken>()).Returns(true);
@@ -50,6 +75,16 @@ public sealed class CreateProfileCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         _profileRepository.DidNotReceive().Add(Arg.Any<Profile>());
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenProfileAlreadyExists_DoesNotCreateASecondDefaultCollection()
+    {
+        _profileRepository.ExistsByUserIdAsync(Command.UserId, Arg.Any<CancellationToken>()).Returns(true);
+
+        await _handler.Handle(Command, CancellationToken.None);
+
+        _collectionRepository.DidNotReceive().Add(Arg.Any<Collection>());
     }
 
     [Fact]

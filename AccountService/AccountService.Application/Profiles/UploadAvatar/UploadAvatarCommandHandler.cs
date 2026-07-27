@@ -36,8 +36,28 @@ internal sealed class UploadAvatarCommandHandler(
         }
 
         profile.SetAvatar(new Avatar(stored.Value.PublicId, stored.Value.SecureUrl));
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await SaveOrDiscardAsync(stored.Value, cancellationToken);
 
         return new AvatarResponse(stored.Value.SecureUrl);
+    }
+
+    // Motivo: el avatar ya está en Cloudinary. Si el cambio local no llega a persistirse el binario
+    // quedaría huérfano y sin public_id almacenado, imposible de borrar después (DESIGN.md §9).
+    private async Task SaveOrDiscardAsync(StoredImage stored, CancellationToken cancellationToken)
+    {
+        bool persisted = false;
+
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            persisted = true;
+        }
+        finally
+        {
+            if (!persisted)
+            {
+                await imageStorage.TryDeleteAsync(stored.PublicId, cancellationToken);
+            }
+        }
     }
 }

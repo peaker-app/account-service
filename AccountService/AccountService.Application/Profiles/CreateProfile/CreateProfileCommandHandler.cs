@@ -1,3 +1,4 @@
+using AccountService.Domain.Collections;
 using AccountService.Domain.Profiles;
 using Common.Application.Abstractions;
 using Common.Application.Messaging;
@@ -7,6 +8,7 @@ namespace AccountService.Application.Profiles.CreateProfile;
 
 internal sealed class CreateProfileCommandHandler(
     IProfileRepository profileRepository,
+    ICollectionRepository collectionRepository,
     IUnitOfWork unitOfWork,
     IDateTimeProvider dateTimeProvider) : ICommandHandler<CreateProfileCommand>
 {
@@ -32,7 +34,14 @@ internal sealed class CreateProfileCommandHandler(
             return Result.Failure(profile.Error);
         }
 
+        Result<Collection> defaultCollection = Collection.CreateDefault(profile.Value.Id);
+        if (defaultCollection.IsFailure)
+        {
+            return Result.Failure(defaultCollection.Error);
+        }
+
         profileRepository.Add(profile.Value);
+        collectionRepository.Add(defaultCollection.Value);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

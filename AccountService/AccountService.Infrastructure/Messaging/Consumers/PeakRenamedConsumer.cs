@@ -1,3 +1,4 @@
+using AccountService.Application.Collections.SyncCollectionPeak;
 using AccountService.Application.ProfileAscents.SyncPeakName;
 using AccountService.Infrastructure.Persistence;
 using Common.Application.Abstractions;
@@ -25,14 +26,8 @@ internal sealed class PeakRenamedConsumer(
             return;
         }
 
-        Result result = await sender.Send(
-            new SyncPeakNameCommand(message.PeakId, message.Name, message.AltitudeM), cancellationToken);
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException(
-                $"No se pudo sincronizar el nombre del pico {message.PeakId}: {result.Error.Code}.");
-        }
+        await SyncAscentsAsync(message, cancellationToken);
+        await SyncCollectionsAsync(message, cancellationToken);
 
         dbContext.Set<ProcessedMessage>().Add(new ProcessedMessage
         {
@@ -41,6 +36,31 @@ internal sealed class PeakRenamedConsumer(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SyncAscentsAsync(PeakRenamed message, CancellationToken cancellationToken)
+    {
+        Result result = await sender.Send(
+            new SyncPeakNameCommand(message.PeakId, message.Name, message.AltitudeM), cancellationToken);
+
+        EnsureSucceeded(result, message.PeakId);
+    }
+
+    private async Task SyncCollectionsAsync(PeakRenamed message, CancellationToken cancellationToken)
+    {
+        Result result = await sender.Send(
+            new SyncCollectionPeakCommand(message.PeakId, message.Name, message.AltitudeM), cancellationToken);
+
+        EnsureSucceeded(result, message.PeakId);
+    }
+
+    private static void EnsureSucceeded(Result result, Guid peakId)
+    {
+        if (result.IsFailure)
+        {
+            throw new InvalidOperationException(
+                $"No se pudo sincronizar el nombre del pico {peakId}: {result.Error.Code}.");
+        }
     }
 
     private Task<bool> IsAlreadyProcessedAsync(Guid messageId, CancellationToken cancellationToken) =>

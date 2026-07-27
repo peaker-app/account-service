@@ -5,20 +5,23 @@ using MassTransit;
 
 namespace AccountService.Infrastructure.Messaging;
 
-internal sealed class ProfileUpdatedDomainEventHandler(
-    IPublishEndpoint publishEndpoint,
-    IDateTimeProvider dateTimeProvider) : IDomainEventHandler<ProfileUpdatedDomainEvent>
+internal sealed class ProfileUpdatedDomainEventHandler(IPublishEndpoint publishEndpoint)
+    : IDomainEventHandler<ProfileUpdatedDomainEvent>
 {
-    public Task Handle(ProfileUpdatedDomainEvent domainEvent, CancellationToken cancellationToken) =>
+    public Task Handle(
+        ProfileUpdatedDomainEvent domainEvent,
+        DomainEventContext context,
+        CancellationToken cancellationToken) =>
         publishEndpoint.Publish(
             new ProfileUpdated
             {
+                MessageId = context.MessageId,
+                OccurredAtUtc = context.OccurredAtUtc,
                 ProfileId = domainEvent.ProfileId,
                 UserId = domainEvent.UserId,
                 DisplayName = domainEvent.DisplayName,
                 Slug = domainEvent.Slug,
-                Visibility = domainEvent.Visibility,
-                OccurredAtUtc = dateTimeProvider.UtcNow
+                Visibility = domainEvent.Visibility
             },
             cancellationToken);
 }

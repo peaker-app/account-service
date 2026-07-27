@@ -18,6 +18,7 @@ internal static class AscentEvents
         string peakName = "Aneto",
         DateOnly? ascentDate = null) => new()
         {
+            MessageId = Guid.CreateVersion7(),
             AscentId = ascentId,
             UserId = userId,
             PeakId = peakId,
@@ -35,6 +36,7 @@ internal static class AscentEvents
         DateOnly ascentDate,
         string visibility = Public) => new()
         {
+            MessageId = Guid.CreateVersion7(),
             AscentId = ascentId,
             UserId = userId,
             PeakId = peakId,
@@ -45,6 +47,7 @@ internal static class AscentEvents
 
     public static AscentDeleted Deleted(Guid userId, Guid ascentId, Guid peakId) => new()
     {
+        MessageId = Guid.CreateVersion7(),
         AscentId = ascentId,
         UserId = userId,
         PeakId = peakId,
@@ -54,6 +57,7 @@ internal static class AscentEvents
 
     public static PeakRenamed Renamed(Guid peakId, string name, int altitudeMeters) => new()
     {
+        MessageId = Guid.CreateVersion7(),
         PeakId = peakId,
         Name = name,
         AltitudeM = altitudeMeters,

@@ -7,6 +7,9 @@ namespace AccountService.Infrastructure.Messaging;
 internal sealed class ProfileAvatarReplacedDomainEventHandler(IImageStorage imageStorage)
     : IDomainEventHandler<ProfileAvatarReplacedDomainEvent>
 {
-    public Task Handle(ProfileAvatarReplacedDomainEvent domainEvent, CancellationToken cancellationToken) =>
+    public Task Handle(
+        ProfileAvatarReplacedDomainEvent domainEvent,
+        DomainEventContext context,
+        CancellationToken cancellationToken) =>
         imageStorage.DeleteAsync(domainEvent.PreviousPublicId, cancellationToken);
 }

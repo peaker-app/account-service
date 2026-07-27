@@ -8,6 +8,8 @@ public interface IProfileRepository
 
     Task<Profile?> GetBySlugAsync(string slug, CancellationToken cancellationToken);
 
+    Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken cancellationToken);
+
     Task<bool> ExistsByUserIdAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken);

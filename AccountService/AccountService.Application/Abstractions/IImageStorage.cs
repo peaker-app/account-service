@@ -11,4 +11,6 @@ public interface IImageStorage
     Task<Result<StoredImage>> UploadAvatarAsync(AvatarUpload upload, CancellationToken cancellationToken);
 
     Task DeleteAsync(string publicId, CancellationToken cancellationToken);
+
+    Task TryDeleteAsync(string publicId, CancellationToken cancellationToken);
 }

@@ -6,6 +6,7 @@ using Common.Application.Abstractions;
 using Common.Domain.Results;
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace AccountService.Application.UnitTests.Profiles;
@@ -68,5 +69,20 @@ public sealed class UploadAvatarCommandHandlerTests
 
         result.Error.Type.Should().Be(Common.Domain.Results.ErrorType.NotFound);
         await _imageStorage.DidNotReceive().UploadAvatarAsync(Arg.Any<AvatarUpload>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenPersistenceFails_RemovesTheOrphanedAvatarFromStorage()
+    {
+        _profileRepository.GetByUserIdAsync(UserId, Arg.Any<CancellationToken>()).Returns(ProfileFactory.For(UserId));
+        _imageStorage.UploadAvatarAsync(Arg.Any<AvatarUpload>(), Arg.Any<CancellationToken>()).Returns(Stored);
+        _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("ux_profiles_user_id"));
+
+        Func<Task> upload = () => _handler.Handle(
+            new UploadAvatarCommand(UserId, AvatarUploads.ValidPng()), CancellationToken.None);
+
+        await upload.Should().ThrowAsync<InvalidOperationException>();
+        await _imageStorage.Received(1).TryDeleteAsync(Stored.PublicId, Arg.Any<CancellationToken>());
     }
 }
