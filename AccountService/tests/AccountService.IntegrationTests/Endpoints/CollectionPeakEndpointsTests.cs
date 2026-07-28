@@ -129,6 +129,36 @@ public sealed class CollectionPeakEndpointsTests(AccountServiceApiFactory factor
     }
 
     [Fact]
+    public async Task GetById_WithPeaks_ReturnsTheMostRecentlyAddedFirst()
+    {
+        using HttpClient client = await SeededClientAsync();
+        Guid collectionId = await CreateAsync(client, "Alpes");
+        (await AddPeakAsync(client, collectionId, _factory.PeakCatalog.Register("Aneto", 3404))).Dispose();
+        (await AddPeakAsync(client, collectionId, _factory.PeakCatalog.Register("Posets", 3375))).Dispose();
+        (await AddPeakAsync(client, collectionId, _factory.PeakCatalog.Register("Monte Perdido", 3355))).Dispose();
+
+        CollectionDetailResponse? detail =
+            await client.GetFromJsonAsync<CollectionDetailResponse>($"/api/collections/{collectionId}");
+
+        detail!.Peaks.Items.Select(peak => peak.PeakName)
+            .Should().Equal("Monte Perdido", "Posets", "Aneto");
+    }
+
+    [Fact]
+    public async Task GetById_WithPeaksSpanningPages_KeepsTheNewestOnTheFirstPage()
+    {
+        using HttpClient client = await SeededClientAsync();
+        Guid collectionId = await CreateAsync(client, "Alpes");
+        (await AddPeakAsync(client, collectionId, _factory.PeakCatalog.Register("Aneto", 3404))).Dispose();
+        (await AddPeakAsync(client, collectionId, _factory.PeakCatalog.Register("Posets", 3375))).Dispose();
+
+        CollectionDetailResponse? detail = await client.GetFromJsonAsync<CollectionDetailResponse>(
+            $"/api/collections/{collectionId}?page=1&size=1");
+
+        detail!.Peaks.Items.Single().PeakName.Should().Be("Posets");
+    }
+
+    [Fact]
     public async Task ListMine_WithPeaks_ReportsThePeakCount()
     {
         using HttpClient client = await SeededClientAsync();

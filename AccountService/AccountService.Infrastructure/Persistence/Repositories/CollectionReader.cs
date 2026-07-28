@@ -75,8 +75,8 @@ internal sealed class CollectionReader(AccountDbContext context) : ICollectionRe
             .AsNoTracking()
             .Where(collection => collection.Id == lookup.CollectionId)
             .SelectMany(collection => collection.Peaks)
-            .OrderBy(peak => peak.AddedAtUtc)
-            .ThenBy(peak => peak.Id)
+            .OrderByDescending(peak => peak.AddedAtUtc)
+            .ThenByDescending(peak => peak.Id)
             .Skip(lookup.Page.Skip)
             .Take(lookup.Page.Size)
             .Select(peak => new CollectionPeakResponse(
