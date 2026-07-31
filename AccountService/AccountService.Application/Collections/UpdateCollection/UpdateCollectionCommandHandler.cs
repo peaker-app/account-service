@@ -36,7 +36,7 @@ internal sealed class UpdateCollectionCommandHandler(
             return editable;
         }
 
-        var lookup = new CollectionNameLookup(collection.ProfileId, details.Name, collection.Id);
+        CollectionNameLookup lookup = new(collection.ProfileId, details.Name, collection.Id);
 
         if (await collectionRepository.ExistsByNameAsync(lookup, cancellationToken))
         {

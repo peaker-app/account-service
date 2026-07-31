@@ -11,6 +11,7 @@ internal sealed class CollectionConfiguration : EntityConfiguration<Collection>
 {
     private const int KindLength = 20;
     private const string CaseAndAccentInsensitive = "utf8mb4_0900_ai_ci";
+    private const string CollectionIdColumn = "collection_id";
 
     public override void Configure(EntityTypeBuilder<Collection> builder)
     {
@@ -64,18 +65,18 @@ internal sealed class CollectionConfiguration : EntityConfiguration<Collection>
         builder.OwnsMany(collection => collection.Peaks, peak =>
         {
             peak.ToTable("collection_peaks");
-            peak.WithOwner().HasForeignKey("collection_id");
+            peak.WithOwner().HasForeignKey(CollectionIdColumn);
             peak.HasKey(entity => entity.Id);
 
             peak.Property(entity => entity.Id).HasColumnName("id").ValueGeneratedNever();
-            peak.Property<Guid>("collection_id").HasColumnName("collection_id");
+            peak.Property<Guid>(CollectionIdColumn).HasColumnName(CollectionIdColumn);
             peak.Property(entity => entity.PeakId).HasColumnName("peak_id").IsRequired();
             peak.Property(entity => entity.PeakName)
                 .HasColumnName("peak_name").HasMaxLength(CollectionPeakSnapshot.MaxNameLength).IsRequired();
             peak.Property(entity => entity.PeakAltitudeMeters).HasColumnName("peak_altitude_m").IsRequired();
             peak.Property(entity => entity.AddedAtUtc).HasColumnName("added_at_utc").IsRequired();
 
-            peak.HasIndex("collection_id", nameof(CollectionPeak.PeakId))
+            peak.HasIndex(CollectionIdColumn, nameof(CollectionPeak.PeakId))
                 .IsUnique().HasDatabaseName("ux_collection_peaks_unique");
             peak.HasIndex(entity => entity.PeakId).HasDatabaseName("ix_collection_peaks_peak");
         });

@@ -32,8 +32,8 @@ public sealed class ProfileTests
 
         profile.Stats.Should().BeEquivalentTo(new
         {
-            update.Overall,
-            update.Public,
+            Overall = update.Overall,
+            Public = update.Public,
             UpdatedAtUtc = updatedAtUtc
         });
     }

@@ -18,8 +18,8 @@ internal static class ApiTestHelpers
         string contentType,
         string fileName)
     {
-        using var form = new MultipartFormDataContent();
-        var fileContent = new ByteArrayContent(content);
+        using MultipartFormDataContent form = [];
+        ByteArrayContent fileContent = new(content);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         form.Add(fileContent, "file", fileName);
 

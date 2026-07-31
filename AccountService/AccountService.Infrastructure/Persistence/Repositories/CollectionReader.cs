@@ -29,7 +29,7 @@ internal sealed class CollectionReader(AccountDbContext context) : ICollectionRe
                 collection.Name.Value,
                 collection.Description,
                 collection.Kind.ToString(),
-                collection.Peaks.Count()))
+                collection.Peaks.Count))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<CollectionSummaryResponse>(items, page.Page, page.Size, totalCount);
@@ -47,7 +47,7 @@ internal sealed class CollectionReader(AccountDbContext context) : ICollectionRe
                 collection.Name.Value,
                 collection.Description,
                 collection.Kind.ToString(),
-                collection.Peaks.Count()))
+                collection.Peaks.Count))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (header is null)

@@ -51,10 +51,12 @@ internal sealed class CreateProfileCommandHandler(
     {
         ProfileSlug baseSlug = ProfileSlug.FromUsername(username);
         ProfileSlug candidate = baseSlug;
+        int suffix = 2;
 
-        for (int suffix = 2; await profileRepository.ExistsBySlugAsync(candidate.Value, cancellationToken); suffix++)
+        while (await profileRepository.ExistsBySlugAsync(candidate.Value, cancellationToken))
         {
             candidate = baseSlug.WithSuffix(suffix);
+            suffix++;
         }
 
         return candidate;

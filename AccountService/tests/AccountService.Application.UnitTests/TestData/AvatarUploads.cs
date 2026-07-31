@@ -1,4 +1,5 @@
 using AccountService.Application.Abstractions;
+using AccountService.Domain.Profiles;
 
 namespace AccountService.Application.UnitTests.TestData;
 
@@ -14,7 +15,7 @@ internal static class AvatarUploads
 
     public static AvatarUpload TooLarge()
     {
-        var content = new byte[AccountService.Domain.Profiles.AvatarConstraints.MaxSizeBytes + 1];
+        byte[] content = new byte[AvatarConstraints.MaxSizeBytes + 1];
         PngHeader.CopyTo(content, 0);
 
         return new AvatarUpload(content, "image/png", "avatar.png");

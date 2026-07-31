@@ -134,7 +134,7 @@ public sealed class ProfilesController(ISender sender, IUserContext userContext)
 
     private static async Task<AvatarUpload> ReadUploadAsync(IFormFile file, CancellationToken cancellationToken)
     {
-        using var stream = new MemoryStream();
+        using MemoryStream stream = new();
         await file.CopyToAsync(stream, cancellationToken);
 
         return new AvatarUpload(stream.ToArray(), file.ContentType, file.FileName);

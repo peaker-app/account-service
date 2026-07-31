@@ -19,7 +19,7 @@ internal sealed class GetCollectionByIdQueryHandler(ICollectionReader collection
             return Result.Failure<CollectionDetailResponse>(validation.Error);
         }
 
-        var lookup = new CollectionDetailLookup(query.CollectionId, query.UserId, query.Page);
+        CollectionDetailLookup lookup = new(query.CollectionId, query.UserId, query.Page);
         CollectionDetailResponse? collection = await collectionReader.FindDetailAsync(lookup, cancellationToken);
 
         return collection is null

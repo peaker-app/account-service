@@ -17,6 +17,14 @@ internal static class ProfileMappings
         profile.CountryCode?.Value,
         profile.Visibility.ToString());
 
+    public static ProfileStatsResponse ToResponse(this ProfileStatsSnapshot stats) => new(
+        stats.TotalAscents,
+        stats.DistinctPeaks,
+        stats.HighestAltitudeMeters,
+        stats.HighestPeakId,
+        stats.HighestPeakName,
+        stats.LastAscentDate);
+
     public static PublicProfileResponse ToPublicResponse(this Profile profile) => new(
         profile.UserId,
         profile.DisplayName.Value,
@@ -25,12 +33,4 @@ internal static class ProfileMappings
         profile.Avatar?.SecureUrl,
         profile.CountryCode?.Value,
         profile.Stats.Public.ToResponse());
-
-    public static ProfileStatsResponse ToResponse(this ProfileStatsSnapshot stats) => new(
-        stats.TotalAscents,
-        stats.DistinctPeaks,
-        stats.HighestAltitudeMeters,
-        stats.HighestPeakId,
-        stats.HighestPeakName,
-        stats.LastAscentDate);
 }

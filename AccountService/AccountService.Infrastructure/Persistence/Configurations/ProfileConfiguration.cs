@@ -8,6 +8,8 @@ namespace AccountService.Infrastructure.Persistence.Configurations;
 
 internal sealed class ProfileConfiguration : EntityConfiguration<Profile>
 {
+    private const string ProfileIdColumn = "profile_id";
+
     public override void Configure(EntityTypeBuilder<Profile> builder)
     {
         base.Configure(builder);
@@ -64,9 +66,9 @@ internal sealed class ProfileConfiguration : EntityConfiguration<Profile>
         builder.OwnsOne(profile => profile.Stats, stats =>
         {
             stats.ToTable("profile_stats");
-            stats.WithOwner().HasForeignKey("profile_id");
-            stats.Property<Guid>("profile_id").HasColumnName("profile_id");
-            stats.HasKey("profile_id");
+            stats.WithOwner().HasForeignKey(ProfileIdColumn);
+            stats.Property<Guid>(ProfileIdColumn).HasColumnName(ProfileIdColumn);
+            stats.HasKey(ProfileIdColumn);
 
             // Motivo: dos eventos de ascensión del mismo perfil se consumen en paralelo y ambos
             // recalculan desde el mismo estado; el token hace fallar al segundo para que reintente.

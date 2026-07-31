@@ -65,14 +65,12 @@ public sealed partial class ProfileSlug : ValueObject
     private static string RemoveDiacritics(string value)
     {
         string decomposed = value.Normalize(NormalizationForm.FormD);
-        var builder = new StringBuilder(decomposed.Length);
+        StringBuilder builder = new(decomposed.Length);
 
-        foreach (char character in decomposed)
+        foreach (char character in decomposed.Where(character =>
+            CharUnicodeInfo.GetUnicodeCategory(character) is not UnicodeCategory.NonSpacingMark))
         {
-            if (CharUnicodeInfo.GetUnicodeCategory(character) is not UnicodeCategory.NonSpacingMark)
-            {
-                builder.Append(character);
-            }
+            builder.Append(character);
         }
 
         return builder.ToString().Normalize(NormalizationForm.FormC);

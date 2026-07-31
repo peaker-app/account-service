@@ -67,12 +67,12 @@ public sealed class PeakCatalogHttpClientTests
 
     private static Task<Result<CollectionPeakSnapshot>> SendAsync(StubHttpMessageHandler handler)
     {
-        using var httpClient = new HttpClient(handler, disposeHandler: false)
+        using HttpClient httpClient = new(handler, disposeHandler: false)
         {
             BaseAddress = new Uri("http://peak-service:8080/")
         };
 
-        var client = new PeakCatalogHttpClient(httpClient, NullLogger<PeakCatalogHttpClient>.Instance);
+        PeakCatalogHttpClient client = new(httpClient, NullLogger<PeakCatalogHttpClient>.Instance);
 
         return client.GetSnapshotAsync(PeakId, CancellationToken.None);
     }

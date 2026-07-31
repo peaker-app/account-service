@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using AccountService.Application;
 using AccountService.Infrastructure;
 using AccountService.Infrastructure.Persistence;
+using Common.API.Documentation;
 using Common.API.Health;
 using Common.API.Middlewares;
 using Common.API.Security;
@@ -24,8 +25,7 @@ builder.Services.AddCommonJwtAuthentication(builder.Configuration);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddCommonSwagger("account-service");
 
 builder.Services.AddHealthChecks().AddDbContextCheck<AccountDbContext>();
 
@@ -48,5 +48,3 @@ app.MapControllers();
 app.MapCommonHealthChecks();
 
 await app.RunAsync();
-
-public partial class Program;

@@ -25,8 +25,8 @@ internal sealed class CreateCollectionCommandHandler(
             return Result.Failure<Guid>(ProfileErrors.NotFound(command.UserId));
         }
 
-        var details = new CollectionDetails(name.Value, command.Description);
-        var lookup = new CollectionNameLookup(profileId.Value, name.Value);
+        CollectionDetails details = new(name.Value, command.Description);
+        CollectionNameLookup lookup = new(profileId.Value, name.Value);
 
         return await collectionRepository.ExistsByNameAsync(lookup, cancellationToken)
             ? Result.Failure<Guid>(CollectionErrors.NameAlreadyUsed)

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using AccountService.Application.Profiles.UpdateProfile;
 using AccountService.Domain.Profiles;
 
@@ -7,7 +8,7 @@ public sealed record UpdateProfileRequest(
     string DisplayName,
     string? Bio,
     string? CountryCode,
-    ProfileVisibility Visibility)
+    [property: JsonRequired] ProfileVisibility Visibility)
 {
     public UpdateProfileCommand ToCommand(Guid userId) =>
         new(userId, DisplayName, Bio, CountryCode, Visibility);

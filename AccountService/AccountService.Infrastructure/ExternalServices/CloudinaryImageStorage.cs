@@ -24,9 +24,9 @@ internal sealed class CloudinaryImageStorage : IImageStorage
 
     public async Task<Result<StoredImage>> UploadAvatarAsync(AvatarUpload upload, CancellationToken cancellationToken)
     {
-        using var stream = new MemoryStream(upload.Content.ToArray());
+        using MemoryStream stream = new(upload.Content.ToArray());
 
-        var uploadParameters = new ImageUploadParams
+        ImageUploadParams uploadParameters = new()
         {
             File = new FileDescription(upload.FileName, stream),
             Folder = _options.Folder,
@@ -48,7 +48,7 @@ internal sealed class CloudinaryImageStorage : IImageStorage
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var deletionParameters = new DeletionParams(publicId);
+        DeletionParams deletionParameters = new(publicId);
 
         await _cloudinary.DestroyAsync(deletionParameters);
     }

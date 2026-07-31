@@ -86,7 +86,7 @@ public sealed class CollectionTests
     public void UpdateDetails_WithDescriptionLongerThanTheMaximum_ReturnsDescriptionTooLong()
     {
         Collection collection = CollectionMother.Custom();
-        var details = new CollectionDetails(
+        CollectionDetails details = new(
             CollectionMother.Name("Alpes"),
             new string('a', Collection.MaxDescriptionLength + 1));
 
