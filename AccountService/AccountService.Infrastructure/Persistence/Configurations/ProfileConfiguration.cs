@@ -16,6 +16,8 @@ internal sealed class ProfileConfiguration : EntityConfiguration<Profile>
 
         builder.ToTable("profiles");
 
+        builder.Property(profile => profile.UpdatedAtUtc).IsConcurrencyToken();
+
         builder.Property(profile => profile.UserId).HasColumnName("user_id").IsRequired();
         builder.HasIndex(profile => profile.UserId).IsUnique().HasDatabaseName("ux_profiles_user_id");
 

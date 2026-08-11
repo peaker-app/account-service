@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddSingleton<AuditableEntityInterceptor>();
         services.AddSingleton<OutboxInterceptor>();
+        services.AddSingleton<ConcurrencyConflictInterceptor>();
         services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
 
         services.AddAccountDbContext();
@@ -62,7 +63,8 @@ public static class DependencyInjection
             .UseMySQL(ResolveConnectionString(provider))
             .AddInterceptors(
                 provider.GetRequiredService<AuditableEntityInterceptor>(),
-                provider.GetRequiredService<OutboxInterceptor>()));
+                provider.GetRequiredService<OutboxInterceptor>(),
+                provider.GetRequiredService<ConcurrencyConflictInterceptor>()));
 
     private static string ResolveConnectionString(IServiceProvider provider)
     {

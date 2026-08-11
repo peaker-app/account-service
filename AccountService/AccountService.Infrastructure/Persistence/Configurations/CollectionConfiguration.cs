@@ -18,6 +18,7 @@ internal sealed class CollectionConfiguration : EntityConfiguration<Collection>
         base.Configure(builder);
 
         builder.ToTable("collections");
+        builder.Property(collection => collection.UpdatedAtUtc).IsConcurrencyToken();
         builder.Ignore(collection => collection.PeakCount);
         builder.Ignore(collection => collection.IsDefault);
 

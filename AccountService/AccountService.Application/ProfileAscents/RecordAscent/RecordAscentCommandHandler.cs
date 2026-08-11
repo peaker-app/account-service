@@ -3,6 +3,7 @@ using AccountService.Domain.Profiles;
 using Common.Application.Abstractions;
 using Common.Application.Messaging;
 using Common.Domain.Results;
+using Microsoft.Extensions.Logging;
 
 namespace AccountService.Application.ProfileAscents.RecordAscent;
 
@@ -10,7 +11,8 @@ internal sealed class RecordAscentCommandHandler(
     IProfileRepository profileRepository,
     IProfileAscentRepository ascentRepository,
     IUnitOfWork unitOfWork,
-    IDateTimeProvider dateTimeProvider) : ICommandHandler<RecordAscentCommand>
+    IDateTimeProvider dateTimeProvider,
+    ILogger<RecordAscentCommandHandler> logger) : ICommandHandler<RecordAscentCommand>
 {
     public async Task<Result> Handle(RecordAscentCommand command, CancellationToken cancellationToken)
     {
@@ -18,27 +20,22 @@ internal sealed class RecordAscentCommandHandler(
 
         if (profile is null)
         {
-            return Result.Failure(ProfileErrors.NotFound(command.UserId));
-        }
+            logger.LogWarning(
+                "Discarded ascent {AscentId}: no profile exists for user {UserId}",
+                command.AscentId,
+                command.UserId);
 
-        if (await ascentRepository.ExistsByAscentIdAsync(command.AscentId, cancellationToken))
-        {
             return Result.Success();
         }
 
-        Result<ProfileAscent> record = BuildRecord(command, profile.Id);
+        Result<ProfileAscentValues> values = Read(command);
 
-        if (record.IsFailure)
-        {
-            return Result.Failure(record.Error);
-        }
-
-        await AppendAndRefreshAsync(profile, record.Value, cancellationToken);
-
-        return Result.Success();
+        return values.IsFailure
+            ? Result.Failure(values.Error)
+            : await ProjectAsync(profile, command, values.Value, cancellationToken);
     }
 
-    private static Result<ProfileAscent> BuildRecord(RecordAscentCommand command, Guid profileId)
+    private static Result<ProfileAscentValues> Read(RecordAscentCommand command)
     {
         Result<PeakSnapshot> peak = PeakSnapshot.Create(
             command.PeakId, command.PeakName, command.PeakAltitudeMeters);
@@ -52,21 +49,52 @@ internal sealed class RecordAscentCommandHandler(
 
         return visibility.IsFailure
             ? visibility.Error
-            : ProfileAscent.Create(
-                new ProfileAscentDraft(profileId, command.AscentId, peak.Value, command.AscentDate, visibility.Value));
+            : new ProfileAscentValues(peak.Value, command.AscentDate, visibility.Value);
     }
 
-    private async Task AppendAndRefreshAsync(
+    private async Task<Result> ProjectAsync(
         Profile profile,
-        ProfileAscent record,
+        RecordAscentCommand command,
+        ProfileAscentValues values,
         CancellationToken cancellationToken)
     {
         IReadOnlyCollection<ProfileAscent> ascents =
             await ascentRepository.GetByProfileAsync(profile.Id, cancellationToken);
 
-        ascentRepository.Add(record);
-        profile.RefreshStats(ProfileStatsCalculator.Calculate([.. ascents, record]), dateTimeProvider.UtcNow);
+        ProfileAscent? existing = ascents.FirstOrDefault(ascent => ascent.AscentId == command.AscentId);
+
+        if (existing is not null)
+        {
+            existing.SyncPeak(values.Peak);
+            existing.Sync(values.AscentDate, values.Visibility);
+
+            return await RefreshAsync(profile, ascents, cancellationToken);
+        }
+
+        Result<ProfileAscent> record = ProfileAscent.Create(new ProfileAscentDraft(
+            profile.Id, command.AscentId, values.Peak, values.AscentDate, values.Visibility));
+
+        if (record.IsFailure)
+        {
+            return Result.Failure(record.Error);
+        }
+
+        ascentRepository.Add(record.Value);
+
+        return await RefreshAsync(profile, [.. ascents, record.Value], cancellationToken);
+    }
+
+    private async Task<Result> RefreshAsync(
+        Profile profile,
+        IReadOnlyCollection<ProfileAscent> ascents,
+        CancellationToken cancellationToken)
+    {
+        profile.RefreshStats(ProfileStatsCalculator.Calculate(ascents), dateTimeProvider.UtcNow);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
     }
+
+    private sealed record ProfileAscentValues(PeakSnapshot Peak, DateOnly AscentDate, AscentVisibility Visibility);
 }

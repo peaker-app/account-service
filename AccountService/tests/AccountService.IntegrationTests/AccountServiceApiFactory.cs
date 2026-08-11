@@ -7,6 +7,7 @@ using AccountService.Domain.Collections;
 using AccountService.Domain.Profiles;
 using AccountService.IntegrationTests.Fakes;
 using AccountService.Infrastructure.Persistence;
+using Common.Application.Abstractions;
 using Common.Contracts.Users;
 using Common.Domain.Results;
 using MassTransit;
@@ -49,6 +50,15 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
         HttpClient client = CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _tokenSigning.CreateAccessToken(userId));
+
+        return client;
+    }
+
+    public HttpClient CreateAdminClient(Guid userId)
+    {
+        HttpClient client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", _tokenSigning.CreateAccessToken(userId, [PeakerRoles.Admin]));
 
         return client;
     }

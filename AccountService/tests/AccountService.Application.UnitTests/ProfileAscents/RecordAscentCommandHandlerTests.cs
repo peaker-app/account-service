@@ -5,6 +5,7 @@ using AccountService.Domain.Profiles;
 using Common.Application.Abstractions;
 using Common.Domain.Results;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
@@ -28,7 +29,11 @@ public sealed class RecordAscentCommandHandlerTests
         _ascentRepository.GetByProfileAsync(_profile.Id, Arg.Any<CancellationToken>())
             .Returns([]);
         _handler = new RecordAscentCommandHandler(
-            _profileRepository, _ascentRepository, _unitOfWork, _dateTimeProvider);
+            _profileRepository,
+            _ascentRepository,
+            _unitOfWork,
+            _dateTimeProvider,
+            NullLogger<RecordAscentCommandHandler>.Instance);
     }
 
     [Fact]
@@ -51,26 +56,59 @@ public sealed class RecordAscentCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithAlreadyProjectedAscent_IsIdempotentAndDoesNotAddAnother()
+    public async Task Handle_WithAlreadyProjectedAscent_SyncsItInsteadOfAddingAnother()
     {
         RecordAscentCommand command = Command();
-        _ascentRepository.ExistsByAscentIdAsync(command.AscentId, Arg.Any<CancellationToken>()).Returns(true);
+        GivenTheAscentIsAlreadyProjected(command.AscentId, AscentVisibility.Private);
 
         Result result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         _ascentRepository.DidNotReceive().Add(Arg.Any<ProfileAscent>());
-        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_WithoutProfile_ReturnsNotFound()
+    public async Task Handle_WithAlreadyProjectedAscent_AdoptsTheReplayedVisibility()
+    {
+        RecordAscentCommand command = Command();
+        GivenTheAscentIsAlreadyProjected(command.AscentId, AscentVisibility.Private);
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        _profile.Stats.Public.TotalAscents.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutProfile_DiscardsTheEvent()
     {
         _profileRepository.GetByUserIdAsync(UserId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
 
         Result result = await _handler.Handle(Command(), CancellationToken.None);
 
-        result.Error.Should().Be(ProfileErrors.NotFound(UserId));
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_WithoutProfile_DoesNotPersistAnything()
+    {
+        _profileRepository.GetByUserIdAsync(UserId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
+
+        await _handler.Handle(Command(), CancellationToken.None);
+
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    private void GivenTheAscentIsAlreadyProjected(Guid ascentId, AscentVisibility visibility)
+    {
+        ProfileAscent projected = ProfileAscent.Create(new ProfileAscentDraft(
+            _profile.Id,
+            ascentId,
+            PeakSnapshot.Create(ProfileAscentFactory.AnetoId, "Aneto", 3404).Value,
+            new DateOnly(2025, 7, 14),
+            visibility)).Value;
+
+        _ascentRepository.GetByProfileAsync(_profile.Id, Arg.Any<CancellationToken>())
+            .Returns([projected]);
     }
 
     [Fact]
