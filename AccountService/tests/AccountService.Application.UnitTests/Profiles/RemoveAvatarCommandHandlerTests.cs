@@ -24,7 +24,7 @@ public sealed class RemoveAvatarCommandHandlerTests
     public async Task Handle_WithAvatar_RemovesItAndPersists()
     {
         Profile profile = ProfileFactory.For(UserId);
-        profile.SetAvatar(new Avatar("old-public-id", "https://cdn/old.webp"));
+        profile.SetAvatar(new Avatar("old-public-id"));
         _profileRepository.GetByUserIdAsync(UserId, Arg.Any<CancellationToken>()).Returns(profile);
 
         Result result = await _handler.Handle(new RemoveAvatarCommand(UserId), CancellationToken.None);

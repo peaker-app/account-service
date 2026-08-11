@@ -3,6 +3,7 @@ using AccountService.Application.Profiles.UploadAvatar;
 using AccountService.Application.UnitTests.TestData;
 using AccountService.Domain.Profiles;
 using Common.Application.Abstractions;
+using Common.Application.Images;
 using Common.Domain.Results;
 using FluentAssertions;
 using NSubstitute;
@@ -14,7 +15,7 @@ namespace AccountService.Application.UnitTests.Profiles;
 public sealed class UploadAvatarCommandHandlerTests
 {
     private static readonly Guid UserId = Guid.CreateVersion7();
-    private static readonly StoredImage Stored = new("peaker/dev/avatars/a1", "https://cdn/a1.webp");
+    private static readonly StoredImage Stored = new("peaker/dev/avatars/a1");
 
     private readonly IProfileRepository _profileRepository = Substitute.For<IProfileRepository>();
     private readonly IImageStorage _imageStorage = Substitute.For<IImageStorage>();
@@ -22,7 +23,8 @@ public sealed class UploadAvatarCommandHandlerTests
     private readonly UploadAvatarCommandHandler _handler;
 
     public UploadAvatarCommandHandlerTests() =>
-        _handler = new UploadAvatarCommandHandler(_profileRepository, _imageStorage, _unitOfWork);
+        _handler = new UploadAvatarCommandHandler(
+            _profileRepository, _imageStorage, new ImageValidator(), ProfileFactory.AvatarUrlSigner(), _unitOfWork);
 
     [Fact]
     public async Task Handle_WithValidImage_StoresItAndSetsAvatar()
@@ -34,7 +36,8 @@ public sealed class UploadAvatarCommandHandlerTests
         Result<AvatarResponse> result = await _handler.Handle(
             new UploadAvatarCommand(UserId, AvatarUploads.ValidPng()), CancellationToken.None);
 
-        result.Value.AvatarUrl.Should().Be(Stored.SecureUrl);
+        result.Value.AvatarUrl.Should().Be(
+            ProfileFactory.SignedUrlFor(Stored.PublicId, TimeSpan.FromHours(24)));
         profile.Avatar!.PublicId.Should().Be(Stored.PublicId);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }

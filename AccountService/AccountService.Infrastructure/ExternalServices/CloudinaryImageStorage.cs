@@ -4,53 +4,92 @@ using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Common.Domain.Results;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace AccountService.Infrastructure.ExternalServices;
 
-internal sealed class CloudinaryImageStorage : IImageStorage
+internal sealed class CloudinaryImageStorage(
+    CloudinaryFactory cloudinaryFactory,
+    ILogger<CloudinaryImageStorage> logger) : IImageStorage
 {
-    private readonly Cloudinary _cloudinary;
-    private readonly CloudinaryOptions _options;
-    private readonly ILogger<CloudinaryImageStorage> _logger;
+    private const string DeletedOutcome = "ok";
+    private const string MissingOutcome = "not found";
 
-    public CloudinaryImageStorage(IOptions<CloudinaryOptions> options, ILogger<CloudinaryImageStorage> logger)
-    {
-        _options = options.Value;
-        _logger = logger;
-        _cloudinary = new Cloudinary(new Account(_options.CloudName, _options.ApiKey, _options.ApiSecret));
-        _cloudinary.Api.Secure = true;
-    }
-
-    public async Task<Result<StoredImage>> UploadAvatarAsync(AvatarUpload upload, CancellationToken cancellationToken)
+    public async Task<Result<StoredImage>> UploadAvatarAsync(
+        AvatarUpload upload,
+        CancellationToken cancellationToken)
     {
         using MemoryStream stream = new(upload.Content.ToArray());
 
         ImageUploadParams uploadParameters = new()
         {
             File = new FileDescription(upload.FileName, stream),
-            Folder = _options.Folder,
-            Overwrite = true
+            Folder = cloudinaryFactory.Options.Folder,
+            Type = AvatarDelivery.AuthenticatedType,
+            Tags = AvatarDelivery.QuarantineTag,
+            Format = AvatarDelivery.StoredFormat,
+            Transformation = AvatarDelivery.Sanitizing(),
+            Overwrite = false
         };
 
-        ImageUploadResult result = await _cloudinary.UploadAsync(uploadParameters, cancellationToken);
+        ImageUploadResult result = await cloudinaryFactory.Client.UploadAsync(uploadParameters, cancellationToken);
 
         if (result.Error is not null)
         {
-            _logger.LogWarning("Cloudinary avatar upload failed: {ErrorMessage}", result.Error.Message);
+            logger.LogWarning("Cloudinary avatar upload failed: {ErrorMessage}", result.Error.Message);
             return Result.Failure<StoredImage>(ProfileErrors.AvatarUploadFailed);
         }
 
-        return new StoredImage(result.PublicId, result.SecureUrl.ToString());
+        return new StoredImage(result.PublicId);
+    }
+
+    public async Task ConfirmAsync(string publicId, CancellationToken cancellationToken)
+    {
+        TagParams tagParameters = new()
+        {
+            Command = TagCommand.Remove,
+            Tag = AvatarDelivery.QuarantineTag,
+            Type = AvatarDelivery.AuthenticatedType,
+            PublicIds = [publicId]
+        };
+
+        TagResult result = await cloudinaryFactory.Client.TagAsync(tagParameters, cancellationToken);
+
+        if (result.Error is null)
+        {
+            return;
+        }
+
+        logger.LogWarning(
+            "Cloudinary avatar {PublicId} could not leave quarantine: {ErrorMessage}",
+            publicId,
+            result.Error.Message);
+
+        throw new ImageStorageException($"Cloudinary did not confirm the storage of '{publicId}'.");
     }
 
     public async Task DeleteAsync(string publicId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        DeletionParams deletionParameters = new(publicId);
+        DeletionParams deletionParameters = new(publicId)
+        {
+            Type = AvatarDelivery.AuthenticatedType,
+            Invalidate = true
+        };
 
-        await _cloudinary.DestroyAsync(deletionParameters);
+        DeletionResult result = await cloudinaryFactory.Client.DestroyAsync(deletionParameters);
+
+        if (IsConfirmed(result))
+        {
+            return;
+        }
+
+        logger.LogWarning(
+            "Cloudinary avatar deletion was not confirmed for {PublicId}: {Outcome}",
+            publicId,
+            result.Error?.Message ?? result.Result);
+
+        throw new ImageStorageException($"Cloudinary did not confirm the deletion of '{publicId}'.");
     }
 
     public async Task TryDeleteAsync(string publicId, CancellationToken cancellationToken)
@@ -59,11 +98,14 @@ internal sealed class CloudinaryImageStorage : IImageStorage
         {
             await DeleteAsync(publicId, cancellationToken);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        catch (ImageStorageException exception)
         {
-            // Motivo: compensar una subida que no llegó a persistirse es best-effort. Si Cloudinary
-            // no responde no puede convertirse el error del caso de uso en un 500.
-            _logger.LogError(exception, "Orphaned Cloudinary avatar {PublicId} could not be removed", publicId);
+            logger.LogError(exception, "Orphaned Cloudinary avatar {PublicId} could not be removed", publicId);
         }
     }
+
+    private static bool IsConfirmed(DeletionResult result) =>
+        result.Error is null &&
+        (string.Equals(result.Result, DeletedOutcome, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(result.Result, MissingOutcome, StringComparison.OrdinalIgnoreCase));
 }

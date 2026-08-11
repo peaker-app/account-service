@@ -115,7 +115,7 @@ public sealed class ProfileTests
     {
         Profile profile = ProfileMother.Create();
 
-        profile.SetAvatar(new Avatar("peaker/dev/avatars/a1", "https://cdn/a1.webp"));
+        profile.SetAvatar(new Avatar("peaker/dev/avatars/a1"));
 
         profile.Avatar!.PublicId.Should().Be("peaker/dev/avatars/a1");
         profile.DomainEvents.OfType<ProfileAvatarReplacedDomainEvent>().Should().BeEmpty();
@@ -125,10 +125,10 @@ public sealed class ProfileTests
     public void SetAvatar_ReplacingPreviousAvatar_RaisesReplacementWithOldPublicId()
     {
         Profile profile = ProfileMother.Create();
-        profile.SetAvatar(new Avatar("old-public-id", "https://cdn/old.webp"));
+        profile.SetAvatar(new Avatar("old-public-id"));
         profile.ClearDomainEvents();
 
-        profile.SetAvatar(new Avatar("new-public-id", "https://cdn/new.webp"));
+        profile.SetAvatar(new Avatar("new-public-id"));
 
         profile.DomainEvents.OfType<ProfileAvatarReplacedDomainEvent>().Should().ContainSingle()
             .Which.PreviousPublicId.Should().Be("old-public-id");
@@ -139,7 +139,7 @@ public sealed class ProfileTests
     public void RemoveAvatar_WithPreviousAvatar_ClearsItAndRaisesReplacement()
     {
         Profile profile = ProfileMother.Create();
-        profile.SetAvatar(new Avatar("old-public-id", "https://cdn/old.webp"));
+        profile.SetAvatar(new Avatar("old-public-id"));
         profile.ClearDomainEvents();
 
         profile.RemoveAvatar();

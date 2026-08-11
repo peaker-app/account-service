@@ -55,7 +55,6 @@ internal sealed class ProfileConfiguration : EntityConfiguration<Profile>
         builder.OwnsOne(profile => profile.Avatar, avatar =>
         {
             avatar.Property(value => value.PublicId).HasColumnName("avatar_public_id").HasMaxLength(255).IsRequired();
-            avatar.Property(value => value.SecureUrl).HasColumnName("avatar_url").HasMaxLength(500).IsRequired();
         });
 
         builder.Navigation(profile => profile.Avatar).IsRequired(false);
@@ -70,8 +69,6 @@ internal sealed class ProfileConfiguration : EntityConfiguration<Profile>
             stats.Property<Guid>(ProfileIdColumn).HasColumnName(ProfileIdColumn);
             stats.HasKey(ProfileIdColumn);
 
-            // Motivo: dos eventos de ascensión del mismo perfil se consumen en paralelo y ambos
-            // recalculan desde el mismo estado; el token hace fallar al segundo para que reintente.
             stats.Property(value => value.UpdatedAtUtc)
                 .HasColumnName("updated_at_utc")
                 .IsRequired()

@@ -14,6 +14,10 @@ public interface IProfileRepository
 
     Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken);
 
+    Task<IReadOnlySet<string>> GetKnownAvatarPublicIdsAsync(
+        IReadOnlyCollection<string> candidates,
+        CancellationToken cancellationToken);
+
     void Add(Profile profile);
 
     void Remove(Profile profile);

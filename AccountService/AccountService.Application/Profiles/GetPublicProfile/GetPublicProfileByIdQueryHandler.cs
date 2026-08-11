@@ -1,3 +1,4 @@
+using AccountService.Application.Abstractions;
 using AccountService.Application.Profiles.Mappings;
 using AccountService.Domain.Profiles;
 using Common.Application.Messaging;
@@ -5,7 +6,9 @@ using Common.Domain.Results;
 
 namespace AccountService.Application.Profiles.GetPublicProfile;
 
-internal sealed class GetPublicProfileByIdQueryHandler(IProfileRepository profileRepository)
+internal sealed class GetPublicProfileByIdQueryHandler(
+    IProfileRepository profileRepository,
+    IAvatarUrlSigner avatarUrlSigner)
     : IQueryHandler<GetPublicProfileByIdQuery, PublicProfileResponse>
 {
     public async Task<Result<PublicProfileResponse>> Handle(
@@ -15,7 +18,7 @@ internal sealed class GetPublicProfileByIdQueryHandler(IProfileRepository profil
         Profile? profile = await profileRepository.GetByUserIdAsync(query.TargetUserId, cancellationToken);
 
         return profile is not null && profile.IsVisibleTo(query.RequesterId)
-            ? profile.ToPublicResponse()
+            ? profile.ToPublicResponse(avatarUrlSigner)
             : Result.Failure<PublicProfileResponse>(ProfileErrors.NotFound(query.TargetUserId));
     }
 }

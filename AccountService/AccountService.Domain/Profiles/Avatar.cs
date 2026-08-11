@@ -1,3 +1,3 @@
 namespace AccountService.Domain.Profiles;
 
-public sealed record Avatar(string PublicId, string SecureUrl);
+public sealed record Avatar(string PublicId);

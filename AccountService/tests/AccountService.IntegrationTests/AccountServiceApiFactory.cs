@@ -40,6 +40,8 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
 
     internal FakeImageStorage ImageStorage { get; } = new();
 
+    internal FakeAvatarAssetInventory AvatarAssetInventory { get; } = new();
+
     internal FakePeakCatalog PeakCatalog { get; } = new();
 
     public HttpClient CreateAuthenticatedClient(Guid userId)
@@ -226,6 +228,9 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
             services.RemoveAll<IImageStorage>();
             services.AddSingleton<IImageStorage>(ImageStorage);
 
+            services.RemoveAll<IAvatarAssetInventory>();
+            services.AddSingleton<IAvatarAssetInventory>(AvatarAssetInventory);
+
             services.RemoveAll<IPeakCatalog>();
             services.AddSingleton<IPeakCatalog>(PeakCatalog);
 
@@ -271,7 +276,9 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
             ["Jwt:Audience"] = TestTokenSigning.Audience,
             ["Cloudinary:CloudName"] = "test",
             ["Cloudinary:ApiKey"] = "test",
-            ["Cloudinary:ApiSecret"] = "test"
+            ["Cloudinary:ApiSecret"] = "test",
+            ["Cloudinary:AuthTokenKey"] = "00112233445566778899aabbccddeeff",
+            ["AvatarSweep:Enabled"] = "false"
         };
     }
 

@@ -1,6 +1,7 @@
 using AccountService.Application.Abstractions;
 using AccountService.Application.Collections.GetCollectionById;
 using AccountService.Application.Collections.ListCollections;
+using AccountService.Application.Profiles.ExportMyData;
 using AccountService.Domain.Collections;
 using Common.Application.Pagination;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,28 @@ internal sealed class CollectionReader(AccountDbContext context) : ICollectionRe
 
         return new PagedResult<CollectionPeakResponse>(items, lookup.Page.Page, lookup.Page.Size, totalCount);
     }
+
+    public async Task<IReadOnlyList<ExportedCollectionResponse>> ExportByUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken) =>
+        await OwnedBy(userId)
+            .AsNoTracking()
+            .OrderBy(collection => collection.Kind == CollectionKind.WantToClimb ? 0 : 1)
+            .ThenBy(collection => collection.Name)
+            .Select(collection => new ExportedCollectionResponse(
+                collection.Id,
+                collection.Name.Value,
+                collection.Description,
+                collection.Kind.ToString(),
+                collection.Peaks
+                    .OrderByDescending(peak => peak.AddedAtUtc)
+                    .Select(peak => new ExportedCollectionPeakResponse(
+                        peak.PeakId,
+                        peak.PeakName,
+                        peak.PeakAltitudeMeters,
+                        peak.AddedAtUtc))
+                    .ToList()))
+            .ToListAsync(cancellationToken);
 
     private IQueryable<Collection> OwnedBy(Guid userId) =>
         context.Collections.Where(collection =>

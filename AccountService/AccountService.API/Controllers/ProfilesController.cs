@@ -1,10 +1,12 @@
 using AccountService.API.Requests;
 using AccountService.Application.Abstractions;
+using AccountService.Application.Profiles.ExportMyData;
 using AccountService.Application.Profiles.GetMyProfile;
 using AccountService.Application.Profiles.GetMyStats;
 using AccountService.Application.Profiles.GetPublicProfile;
 using AccountService.Application.Profiles.RemoveAvatar;
 using AccountService.Application.Profiles.UploadAvatar;
+using AccountService.Domain.Profiles;
 using Common.API.Results;
 using Common.Application.Abstractions;
 using Common.Domain.Results;
@@ -28,6 +30,19 @@ public sealed class ProfilesController(ISender sender, IUserContext userContext)
     {
         Result<ProfileResponse> result = await sender.Send(
             new GetMyProfileQuery(userContext.UserId), cancellationToken);
+
+        return result.ToActionResult();
+    }
+
+    [HttpGet("me/export")]
+    [Authorize]
+    [ProducesResponseType(typeof(ProfileExportResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExportMyData(CancellationToken cancellationToken)
+    {
+        Result<ProfileExportResponse> result = await sender.Send(
+            new ExportMyProfileQuery(userContext.UserId), cancellationToken);
 
         return result.ToActionResult();
     }
@@ -76,6 +91,9 @@ public sealed class ProfilesController(ISender sender, IUserContext userContext)
 
     [HttpPost("me/avatar")]
     [Authorize]
+#pragma warning disable S5693
+    [RequestSizeLimit(AvatarConstraints.MaxRequestSizeBytes)]
+#pragma warning restore S5693
     [ProducesResponseType(typeof(AvatarResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -10,12 +10,21 @@ internal sealed class FakeImageStorage : IImageStorage
 
     public ConcurrentBag<string> DeletedPublicIds { get; } = [];
 
+    public ConcurrentBag<string> ConfirmedPublicIds { get; } = [];
+
     public Task<Result<StoredImage>> UploadAvatarAsync(AvatarUpload upload, CancellationToken cancellationToken)
     {
         int index = Interlocked.Increment(ref _counter);
-        StoredImage stored = new($"peaker/test/avatars/avatar-{index}", $"https://cdn.test/avatar-{index}.png");
+        StoredImage stored = new($"peaker/test/avatars/avatar-{index}");
 
         return Task.FromResult<Result<StoredImage>>(stored);
+    }
+
+    public Task ConfirmAsync(string publicId, CancellationToken cancellationToken)
+    {
+        ConfirmedPublicIds.Add(publicId);
+
+        return Task.CompletedTask;
     }
 
     public Task DeleteAsync(string publicId, CancellationToken cancellationToken)

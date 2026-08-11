@@ -16,7 +16,7 @@ public sealed class GetMyProfileQueryHandlerTests
     private readonly GetMyProfileQueryHandler _handler;
 
     public GetMyProfileQueryHandlerTests() =>
-        _handler = new GetMyProfileQueryHandler(_profileRepository);
+        _handler = new GetMyProfileQueryHandler(_profileRepository, ProfileFactory.AvatarUrlSigner());
 
     [Fact]
     public async Task Handle_WithExistingProfile_ReturnsOwnData()

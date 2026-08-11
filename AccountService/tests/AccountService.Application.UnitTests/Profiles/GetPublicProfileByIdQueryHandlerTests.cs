@@ -16,7 +16,7 @@ public sealed class GetPublicProfileByIdQueryHandlerTests
     private readonly GetPublicProfileByIdQueryHandler _handler;
 
     public GetPublicProfileByIdQueryHandlerTests() =>
-        _handler = new GetPublicProfileByIdQueryHandler(_profileRepository);
+        _handler = new GetPublicProfileByIdQueryHandler(_profileRepository, ProfileFactory.AvatarUrlSigner());
 
     [Fact]
     public async Task Handle_PublicProfile_ReturnsResponseToAnonymous()

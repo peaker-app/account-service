@@ -1,6 +1,8 @@
 using AccountService.Application.Abstractions;
+using AccountService.Application.Profiles.Mappings;
 using AccountService.Domain.Profiles;
 using Common.Application.Abstractions;
+using Common.Application.Images;
 using Common.Application.Messaging;
 using Common.Domain.Results;
 
@@ -9,18 +11,20 @@ namespace AccountService.Application.Profiles.UploadAvatar;
 internal sealed class UploadAvatarCommandHandler(
     IProfileRepository profileRepository,
     IImageStorage imageStorage,
+    IImageValidator imageValidator,
+    IAvatarUrlSigner avatarUrlSigner,
     IUnitOfWork unitOfWork) : ICommandHandler<UploadAvatarCommand, AvatarResponse>
 {
     public async Task<Result<AvatarResponse>> Handle(UploadAvatarCommand command, CancellationToken cancellationToken)
     {
-        if (command.Upload.Content.Length > AvatarConstraints.MaxSizeBytes)
-        {
-            return Result.Failure<AvatarResponse>(ProfileErrors.AvatarTooLarge);
-        }
+        ImageRejection rejection = imageValidator.Validate(new ImageContent(
+            command.Upload.Content,
+            command.Upload.ContentType,
+            AvatarConstraints.MaxSizeBytes));
 
-        if (!ImageFormatInspector.IsSupported(command.Upload.Content.Span))
+        if (rejection is not ImageRejection.None)
         {
-            return Result.Failure<AvatarResponse>(ProfileErrors.AvatarFormatNotSupported);
+            return Result.Failure<AvatarResponse>(AvatarRejections.ToError(rejection));
         }
 
         Profile? profile = await profileRepository.GetByUserIdAsync(command.UserId, cancellationToken);
@@ -35,14 +39,12 @@ internal sealed class UploadAvatarCommandHandler(
             return Result.Failure<AvatarResponse>(stored.Error);
         }
 
-        profile.SetAvatar(new Avatar(stored.Value.PublicId, stored.Value.SecureUrl));
+        profile.SetAvatar(new Avatar(stored.Value.PublicId));
         await SaveOrDiscardAsync(stored.Value, cancellationToken);
 
-        return new AvatarResponse(stored.Value.SecureUrl);
+        return new AvatarResponse(profile.SignAvatarUrl(avatarUrlSigner)!);
     }
 
-    // Motivo: el avatar ya está en Cloudinary. Si el cambio local no llega a persistirse el binario
-    // quedaría huérfano y sin public_id almacenado, imposible de borrar después (DESIGN.md §9).
     private async Task SaveOrDiscardAsync(StoredImage stored, CancellationToken cancellationToken)
     {
         bool persisted = false;

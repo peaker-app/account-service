@@ -39,6 +39,18 @@ internal sealed class ProfileRepository(AccountDbContext context) : IProfileRepo
             : context.Profiles.AnyAsync(profile => profile.Slug == parsed.Value, cancellationToken);
     }
 
+    public async Task<IReadOnlySet<string>> GetKnownAvatarPublicIdsAsync(
+        IReadOnlyCollection<string> candidates,
+        CancellationToken cancellationToken)
+    {
+        List<string> known = await context.Profiles
+            .Where(profile => profile.Avatar != null && candidates.Contains(profile.Avatar.PublicId))
+            .Select(profile => profile.Avatar!.PublicId)
+            .ToListAsync(cancellationToken);
+
+        return known.ToHashSet(StringComparer.Ordinal);
+    }
+
     public void Add(Profile profile) => context.Profiles.Add(profile);
 
     public void Remove(Profile profile) => context.Profiles.Remove(profile);

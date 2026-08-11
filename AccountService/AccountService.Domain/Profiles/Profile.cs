@@ -72,6 +72,7 @@ public sealed class Profile : AggregateRoot
     {
         RaisePreviousAvatarReplacement();
         Avatar = avatar;
+        Raise(new ProfileAvatarStoredDomainEvent(Id, avatar.PublicId));
     }
 
     public void RemoveAvatar()

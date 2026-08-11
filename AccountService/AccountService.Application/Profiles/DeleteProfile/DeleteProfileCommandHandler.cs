@@ -18,6 +18,7 @@ internal sealed class DeleteProfileCommandHandler(
             return Result.Success();
         }
 
+        profile.RemoveAvatar();
         profileRepository.Remove(profile);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
