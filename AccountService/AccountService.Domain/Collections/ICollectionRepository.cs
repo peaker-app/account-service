@@ -8,6 +8,8 @@ public interface ICollectionRepository
 
     Task<bool> ExistsByNameAsync(CollectionNameLookup lookup, CancellationToken cancellationToken);
 
+    Task<int> CountByProfileAsync(Guid profileId, CancellationToken cancellationToken);
+
     void Add(Collection collection);
 
     void Remove(Collection collection);

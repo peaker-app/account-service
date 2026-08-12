@@ -6,6 +6,8 @@ namespace AccountService.Domain.Collections;
 public sealed class Collection : AggregateRoot
 {
     public const int MaxDescriptionLength = 500;
+    public const int MaxPeaks = 1000;
+    public const int MaxPerProfile = 100;
     public const string DefaultName = "Want to climb";
 
     private static readonly CollectionName DefaultCollectionName = CollectionName.Create(DefaultName).Value;
@@ -87,6 +89,11 @@ public sealed class Collection : AggregateRoot
         if (_peaks.Exists(candidate => candidate.PeakId == peak.PeakId))
         {
             return CollectionErrors.PeakAlreadyAdded;
+        }
+
+        if (_peaks.Count >= MaxPeaks)
+        {
+            return CollectionErrors.PeakLimitReached;
         }
 
         CollectionPeak added = CollectionPeak.Create(peak, addedAtUtc);

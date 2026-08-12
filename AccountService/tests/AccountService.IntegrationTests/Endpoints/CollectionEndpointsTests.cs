@@ -253,6 +253,20 @@ public sealed class CollectionEndpointsTests(AccountServiceApiFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task Create_WithTheProfileAtItsCollectionLimit_ReturnsConflict()
+    {
+        Guid userId = ApiTestHelpers.NewUserId();
+        await _factory.SeedProfileAsync(userId, ApiTestHelpers.UniqueUsername());
+        await _factory.SeedCollectionsAsync(userId, Collection.MaxPerProfile - 1);
+        using HttpClient client = _factory.CreateAuthenticatedClient(userId);
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/collections", new { name = "Una más", description = (string?)null });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     private async Task<HttpClient> SeededClientAsync()
     {
         Guid userId = ApiTestHelpers.NewUserId();

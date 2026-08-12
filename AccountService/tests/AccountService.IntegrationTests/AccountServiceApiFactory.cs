@@ -170,6 +170,45 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
             && context.Profiles.Any(profile => profile.Id == collection.ProfileId && profile.UserId == userId));
     }
 
+    public async Task FillCollectionAsync(Guid collectionId, int peaks)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        Collection collection = await context.Collections.FirstAsync(candidate => candidate.Id == collectionId);
+
+        for (int index = 0; index < peaks; index++)
+        {
+            CollectionPeakSnapshot peak = CollectionPeakSnapshot
+                .Create(Guid.CreateVersion7(), FormattableString.Invariant($"Pico {index}"), 3000).Value;
+
+            collection.AddPeak(peak, DateTime.UtcNow);
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    public async Task SeedCollectionsAsync(Guid userId, int collections)
+    {
+        await using AsyncServiceScope scope = Services.CreateAsyncScope();
+        AccountDbContext context = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
+
+        Guid profileId = await context.Profiles
+            .Where(profile => profile.UserId == userId)
+            .Select(profile => profile.Id)
+            .FirstAsync();
+
+        for (int index = 0; index < collections; index++)
+        {
+            CollectionName name = CollectionName.Create(FormattableString.Invariant($"Sembrada {index}")).Value;
+
+            context.Collections.Add(
+                Collection.Create(new CollectionDraft(profileId, new CollectionDetails(name, null))).Value);
+        }
+
+        await context.SaveChangesAsync();
+    }
+
     public async Task<Exception?> TryInsertDefaultCollectionAsync(Guid userId, string name)
     {
         await using AsyncServiceScope scope = Services.CreateAsyncScope();

@@ -226,6 +226,19 @@ public sealed class CollectionPeakEndpointsTests(AccountServiceApiFactory factor
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    [Fact]
+    public async Task AddPeak_OnACollectionAtItsPeakLimit_ReturnsConflict()
+    {
+        using HttpClient client = await SeededClientAsync();
+        Guid collectionId = await CreateAsync(client, "Alpes");
+        await _factory.FillCollectionAsync(collectionId, Collection.MaxPeaks);
+
+        using HttpResponseMessage response =
+            await AddPeakAsync(client, collectionId, _factory.PeakCatalog.Register());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     private static Task<HttpResponseMessage> AddPeakAsync(HttpClient client, Guid collectionId, Guid peakId) =>
         client.PostAsJsonAsync($"/api/collections/{collectionId}/peaks", new { peakId });
 

@@ -31,6 +31,9 @@ internal sealed class CollectionRepository(AccountDbContext context) : ICollecti
         return named.AnyAsync(cancellationToken);
     }
 
+    public Task<int> CountByProfileAsync(Guid profileId, CancellationToken cancellationToken) =>
+        context.Collections.CountAsync(collection => collection.ProfileId == profileId, cancellationToken);
+
     public void Add(Collection collection) => context.Collections.Add(collection);
 
     public void Remove(Collection collection) => context.Collections.Remove(collection);

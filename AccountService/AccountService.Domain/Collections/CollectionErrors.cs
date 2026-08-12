@@ -29,6 +29,16 @@ public static class CollectionErrors
     public static readonly Error PeakAlreadyAdded =
         Error.Conflict("Collection.PeakAlreadyAdded", "El pico ya está en esta colección.");
 
+    public static readonly Error PeakLimitReached =
+        Error.Conflict(
+            "Collection.PeakLimitReached",
+            $"Una colección no puede tener más de {Collection.MaxPeaks} picos.");
+
+    public static readonly Error CollectionLimitReached =
+        Error.Conflict(
+            "Collection.CollectionLimitReached",
+            $"No puedes tener más de {Collection.MaxPerProfile} colecciones.");
+
     public static readonly Error PeakRequired =
         Error.Validation("Collection.PeakRequired", "El identificador del pico es obligatorio.");
 

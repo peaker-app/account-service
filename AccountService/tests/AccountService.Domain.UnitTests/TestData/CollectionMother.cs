@@ -41,4 +41,16 @@ internal static class CollectionMother
 
         return collection;
     }
+
+    public static Collection Full()
+    {
+        Collection collection = Custom();
+
+        for (int index = 0; index < Collection.MaxPeaks; index++)
+        {
+            collection.AddPeak(Peak(Guid.CreateVersion7(), $"Pico {index}", 3000), AddedAtUtc);
+        }
+
+        return collection;
+    }
 }

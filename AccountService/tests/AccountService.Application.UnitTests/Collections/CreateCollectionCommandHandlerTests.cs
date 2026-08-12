@@ -78,6 +78,31 @@ public sealed class CreateCollectionCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithTheProfileAtItsCollectionLimit_ReturnsCollectionLimitReached()
+    {
+        _collectionRepository
+            .CountByProfileAsync(CollectionFactory.ProfileId, Arg.Any<CancellationToken>())
+            .Returns(Collection.MaxPerProfile);
+
+        Result<Guid> result = await _handler.Handle(Command, CancellationToken.None);
+
+        result.Error.Should().Be(CollectionErrors.CollectionLimitReached);
+        _collectionRepository.DidNotReceive().Add(Arg.Any<Collection>());
+    }
+
+    [Fact]
+    public async Task Handle_WithTheProfileOneCollectionBelowTheLimit_StillCreatesIt()
+    {
+        _collectionRepository
+            .CountByProfileAsync(CollectionFactory.ProfileId, Arg.Any<CancellationToken>())
+            .Returns(Collection.MaxPerProfile - 1);
+
+        Result<Guid> result = await _handler.Handle(Command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Handle_WithoutProfile_ReturnsProfileNotFound()
     {
         _profileRepository.FindIdByUserIdAsync(UserId, Arg.Any<CancellationToken>()).Returns((Guid?)null);

@@ -28,8 +28,14 @@ internal sealed class CreateCollectionCommandHandler(
         CollectionDetails details = new(name.Value, command.Description);
         CollectionNameLookup lookup = new(profileId.Value, name.Value);
 
-        return await collectionRepository.ExistsByNameAsync(lookup, cancellationToken)
-            ? Result.Failure<Guid>(CollectionErrors.NameAlreadyUsed)
+        if (await collectionRepository.ExistsByNameAsync(lookup, cancellationToken))
+        {
+            return Result.Failure<Guid>(CollectionErrors.NameAlreadyUsed);
+        }
+
+        return await collectionRepository.CountByProfileAsync(profileId.Value, cancellationToken)
+            >= Collection.MaxPerProfile
+            ? Result.Failure<Guid>(CollectionErrors.CollectionLimitReached)
             : await CreateAsync(profileId.Value, details, cancellationToken);
     }
 

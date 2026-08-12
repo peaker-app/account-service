@@ -213,4 +213,35 @@ public sealed class CollectionTests
 
         collection.IsOwnedBy(Guid.CreateVersion7()).Should().BeFalse();
     }
+
+    [Fact]
+    public void AddPeak_OnAFullCollection_ReturnsPeakLimitReached()
+    {
+        Collection collection = CollectionMother.Full();
+
+        Result<CollectionPeak> result = collection.AddPeak(CollectionMother.Aneto, CollectionMother.AddedAtUtc);
+
+        result.Error.Should().Be(CollectionErrors.PeakLimitReached);
+    }
+
+    [Fact]
+    public void AddPeak_OnAFullCollection_LeavesThePeakCountAtTheMaximum()
+    {
+        Collection collection = CollectionMother.Full();
+
+        collection.AddPeak(CollectionMother.Aneto, CollectionMother.AddedAtUtc);
+
+        collection.PeakCount.Should().Be(Collection.MaxPeaks);
+    }
+
+    [Fact]
+    public void AddPeak_OnACollectionOnePeakBelowTheLimit_StillAddsIt()
+    {
+        Collection collection = CollectionMother.Full();
+        collection.RemovePeak(collection.Peaks.First().PeakId);
+
+        Result<CollectionPeak> result = collection.AddPeak(CollectionMother.Aneto, CollectionMother.AddedAtUtc);
+
+        result.IsSuccess.Should().BeTrue();
+    }
 }
