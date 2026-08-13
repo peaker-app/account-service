@@ -54,6 +54,15 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
         return client;
     }
 
+    public HttpClient CreateClientWithAudience(Guid userId, string audience)
+    {
+        HttpClient client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", _tokenSigning.CreateAccessTokenForAudience(userId, audience));
+
+        return client;
+    }
+
     public HttpClient CreateAdminClient(Guid userId)
     {
         HttpClient client = CreateClient();
@@ -298,7 +307,7 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
             ValidateIssuer = true,
             ValidIssuer = TestTokenSigning.Issuer,
             ValidateAudience = true,
-            ValidAudience = TestTokenSigning.Audience,
+            ValidAudiences = [TestTokenSigning.Audience],
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = _tokenSigning.PublicKey,
@@ -324,7 +333,7 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
             ["Outbox:RetryBackoffBase"] = "00:00:01",
             ["Outbox:RetryBackoffCap"] = "00:00:01",
             ["Jwt:Issuer"] = TestTokenSigning.Issuer,
-            ["Jwt:Audience"] = TestTokenSigning.Audience,
+            ["Jwt:Audiences:0"] = TestTokenSigning.Audience,
             ["Cloudinary:CloudName"] = "test",
             ["Cloudinary:ApiKey"] = "test",
             ["Cloudinary:ApiSecret"] = "test",
