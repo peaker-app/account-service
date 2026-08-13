@@ -52,8 +52,10 @@ internal sealed class SweepOrphanedAvatarsCommandHandler(
 
         foreach (string publicId in publicIds)
         {
-            await imageStorage.TryDeleteAsync(publicId, cancellationToken);
-            removed++;
+            if (await imageStorage.TryDeleteAsync(publicId, cancellationToken))
+            {
+                removed++;
+            }
         }
 
         return removed;

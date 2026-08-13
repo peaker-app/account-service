@@ -3,16 +3,19 @@ using AccountService.Domain.Profiles;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Common.Domain.Results;
+using Common.Infrastructure.Observability;
 using Microsoft.Extensions.Logging;
 
 namespace AccountService.Infrastructure.ExternalServices;
 
 internal sealed class CloudinaryImageStorage(
     CloudinaryFactory cloudinaryFactory,
+    CompensationMetrics compensationMetrics,
     ILogger<CloudinaryImageStorage> logger) : IImageStorage
 {
     private const string DeletedOutcome = "ok";
     private const string MissingOutcome = "not found";
+    private const string AssetKind = "profile-avatar";
 
     public async Task<Result<StoredImage>> UploadAvatarAsync(
         AvatarUpload upload,
@@ -92,15 +95,20 @@ internal sealed class CloudinaryImageStorage(
         throw new ImageStorageException($"Cloudinary did not confirm the deletion of '{publicId}'.");
     }
 
-    public async Task TryDeleteAsync(string publicId, CancellationToken cancellationToken)
+    public async Task<bool> TryDeleteAsync(string publicId, CancellationToken cancellationToken)
     {
         try
         {
             await DeleteAsync(publicId, cancellationToken);
+
+            return true;
         }
         catch (ImageStorageException exception)
         {
             logger.LogError(exception, "Orphaned Cloudinary avatar {PublicId} could not be removed", publicId);
+            compensationMetrics.RecordFailure(AssetKind);
+
+            return false;
         }
     }
 
