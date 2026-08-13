@@ -23,6 +23,7 @@ public sealed class SweepOrphanedAvatarsCommandHandlerTests
         GivenQuarantined();
         GivenConfirmed();
         GivenKnown();
+        GivenDeletionConfirmed(true);
 
         _handler = new SweepOrphanedAvatarsCommandHandler(_inventory, _imageStorage, _profileRepository);
     }
@@ -71,7 +72,22 @@ public sealed class SweepOrphanedAvatarsCommandHandlerTests
         result.Value.UnreferencedRemoved.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Handle_WhenCloudinaryDoesNotConfirmTheDeletion_DoesNotCountItAsRemoved()
+    {
+        GivenConfirmed(Aged("stray"));
+        GivenDeletionConfirmed(false);
+
+        Result<AvatarSweepResponse> result =
+            await _handler.Handle(new SweepOrphanedAvatarsCommand(Cutoff), CancellationToken.None);
+
+        result.Value.UnreferencedRemoved.Should().Be(0);
+    }
+
     private static StoredAsset Aged(string publicId) => new(publicId, Cutoff.AddDays(-1));
+
+    private void GivenDeletionConfirmed(bool confirmed) =>
+        _imageStorage.TryDeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(confirmed);
 
     private void GivenQuarantined(params StoredAsset[] assets) =>
         _inventory.ListQuarantinedAsync(Arg.Any<CancellationToken>())

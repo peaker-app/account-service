@@ -12,6 +12,7 @@ using AccountService.Infrastructure.Persistence.Repositories;
 using Common.Application.Abstractions;
 using Common.Application.Images;
 using Common.Infrastructure.Messaging;
+using Common.Infrastructure.Observability;
 using Common.Infrastructure.Persistence;
 using Common.Infrastructure.Persistence.Outbox;
 using Common.Infrastructure.Time;
@@ -49,13 +50,11 @@ public static class DependencyInjection
     {
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddSingleton<AuditableEntityInterceptor>();
-        services.AddSingleton<OutboxInterceptor>();
         services.AddSingleton<ConcurrencyConflictInterceptor>();
-        services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
+        services.AddCommonOutbox<AccountDbContext>(configuration);
 
         services.AddAccountDbContext();
         services.AddRepositories();
-        services.AddHostedService<OutboxProcessor<AccountDbContext>>();
     }
 
     private static void AddAccountDbContext(this IServiceCollection services) =>
@@ -98,6 +97,7 @@ public static class DependencyInjection
         services.Configure<AvatarSweepOptions>(configuration.GetSection(AvatarSweepOptions.SectionName));
 
         services.AddSingleton<CloudinaryFactory>();
+        services.AddSingleton<CompensationMetrics>();
         services.AddSingleton<IImageValidator, ImageValidator>();
         services.AddSingleton<IAvatarUrlSigner, CloudinaryAvatarUrlSigner>();
         services.AddScoped<IImageStorage, CloudinaryImageStorage>();

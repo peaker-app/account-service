@@ -321,6 +321,8 @@ public sealed class AccountServiceApiFactory : WebApplicationFactory<Program>, I
             ["Messaging:Password"] = credentials[1],
             ["Messaging:VirtualHost"] = "/",
             ["Outbox:PollingInterval"] = "00:00:01",
+            ["Outbox:RetryBackoffBase"] = "00:00:01",
+            ["Outbox:RetryBackoffCap"] = "00:00:01",
             ["Jwt:Issuer"] = TestTokenSigning.Issuer,
             ["Jwt:Audience"] = TestTokenSigning.Audience,
             ["Cloudinary:CloudName"] = "test",
