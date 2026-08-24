@@ -1,0 +1,34 @@
+@AccountService.API_HostAddress = http://localhost:8082
+
+### Perfil propio
+GET {{AccountService.API_HostAddress}}/api/profiles/me
+Authorization: Bearer {{accessToken}}
+
+### Editar perfil propio
+PUT {{AccountService.API_HostAddress}}/api/profiles/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "displayName": "Rubén",
+  "bio": "Montañero de fin de semana.",
+  "countryCode": "ES",
+  "visibility": "Public"
+}
+
+### Cambiar slug
+PUT {{AccountService.API_HostAddress}}/api/profiles/me/slug
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "slug": "ruben-fer"
+}
+
+### Perfil público por id
+GET {{AccountService.API_HostAddress}}/api/profiles/{{userId}}
+
+### Perfil público por slug
+GET {{AccountService.API_HostAddress}}/api/profiles/by-slug/ruben-fer
+
+###

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\AccountService.Domain\AccountService.Domain.csproj" />
+        <ProjectReference Include="..\..\..\common-library\Common\Common.Application\Common.Application.csproj" />
+        <ProjectReference Include="..\..\..\common-library\Common\Common.Contracts\Common.Contracts.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="AccountService.Application.UnitTests" />
+        <InternalsVisibleTo Include="AccountService.IntegrationTests" />
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
+
+</Project>
