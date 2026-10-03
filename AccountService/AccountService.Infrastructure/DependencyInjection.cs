@@ -32,7 +32,7 @@ public static class DependencyInjection
         services.AddPersistence(configuration);
         services.AddImageStorage(configuration);
         services.AddPeakCatalog(configuration);
-        services.AddEventBus(configuration, bus =>
+        services.AddEventBus(configuration, new EventBusRegistration("account", bus =>
         {
             bus.AddConsumer<UserRegisteredConsumer>();
             bus.AddConsumer<UserDeletedConsumer>();
@@ -40,8 +40,8 @@ public static class DependencyInjection
             bus.AddConsumer<AscentUpdatedConsumer>();
             bus.AddConsumer<AscentDeletedConsumer>();
             bus.AddConsumer<PeakRenamedConsumer>();
-            bus.AddConsumer<PeakUpdatedConsumer>().Endpoint(endpoint => endpoint.Temporary = true);
-        });
+            bus.AddTemporaryConsumer<PeakUpdatedConsumer>();
+        }));
 
         return services;
     }
